@@ -52,7 +52,9 @@ def _trajectory(tracker: str, seed: int) -> list[dict[str, object]]:
         base = {"right_wrist": 0.3, "left_wrist": -0.3, "torso": 0.0, "object": 0.5}[tracker]
         defect_tag = ""
         ts = t
-        if tracker == "left_wrist" and 100 <= i < 110:  # dropped-sample gap
+        if tracker == "left_wrist" and 100 <= i < 110:  # dropped-sample gap — skip rows
+            continue
+        if tracker == "left_wrist" and i == 110:  # boundary marker after gap
             defect_tag = "dropped_gap"
         if tracker == "object":  # clock-drift offset
             ts = t + 0.05 * (t / _DURATION_S)
