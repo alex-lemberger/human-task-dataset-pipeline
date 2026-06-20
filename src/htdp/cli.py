@@ -21,7 +21,14 @@ def synth(out: Path = typer.Option(..., "--out"), seed: int = 0, force: bool = F
 @app.command()
 def validate(raw_dir: Path) -> None:
     """Validate a raw session folder."""
-    raise typer.Exit(0)
+    from htdp.validate import validate_session
+
+    problems = validate_session(raw_dir)
+    if problems:
+        for p in problems:
+            typer.echo(f"FAIL: {p}", err=True)
+        raise typer.Exit(1)
+    typer.echo("OK")
 
 
 @app.command()
