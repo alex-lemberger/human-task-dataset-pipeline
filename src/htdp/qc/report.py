@@ -8,7 +8,7 @@ from htdp.io.canonical import dump_json
 
 _ENV = Environment(
     loader=FileSystemLoader(Path(__file__).parent / "templates"),
-    autoescape=select_autoescape(["html"]),
+    autoescape=select_autoescape(["html", "j2"]),
 )
 
 
