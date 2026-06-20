@@ -8,7 +8,14 @@ app = typer.Typer(help="Human-task dataset pipeline (v0.1 synthetic spine)", no_
 @app.command()
 def synth(out: Path = typer.Option(..., "--out"), seed: int = 0, force: bool = False) -> None:
     """Generate a synthetic session."""
-    raise typer.Exit(0)
+    from htdp.synth.generate import generate_session
+
+    try:
+        d = generate_session(out, seed=seed, force=force)
+    except FileExistsError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"wrote {d}")
 
 
 @app.command()
