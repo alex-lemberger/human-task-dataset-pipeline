@@ -59,12 +59,35 @@ def run_qc(processed_dir: Path) -> dict[str, object]:
         }
     )
 
-    drift_found = "clock_drift" in set(motion["defect_tag"].unique().to_list())
+    _DRIFT_THRESHOLD_S = 0.02
+    final_ts: dict[str, float] = {
+        tracker: float(motion.filter(pl.col("tracker_id") == tracker)["timestamp_s"].max())  # type: ignore[arg-type]
+        for tracker in present
+    }
+    final_ts_values = list(final_ts.values())
+    sorted_values = sorted(final_ts_values)
+    mid = len(sorted_values) // 2
+    reference = (
+        (sorted_values[mid - 1] + sorted_values[mid]) / 2.0
+        if len(sorted_values) % 2 == 0
+        else sorted_values[mid]
+    )
+    drifting = {
+        t: final_ts[t] - reference
+        for t in present
+        if abs(final_ts[t] - reference) > _DRIFT_THRESHOLD_S
+    }
+    if drifting:
+        detail = "; ".join(f"{t} offset={offset:+.4f}s" for t, offset in sorted(drifting.items()))
+        drift_severity = "warn"
+    else:
+        detail = "no cross-stream drift detected"
+        drift_severity = "pass"
     checks.append(
         {
             "name": "clock_drift",
-            "severity": "warn" if drift_found else "pass",
-            "detail": "drift tag present" if drift_found else "no drift",
+            "severity": drift_severity,
+            "detail": detail,
         }
     )
 

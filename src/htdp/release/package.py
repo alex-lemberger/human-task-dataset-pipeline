@@ -22,6 +22,8 @@ _LICENSE = "Synthetic data. CC-BY-4.0 for v0.1 demonstration release.\n"
 
 def _manifest_sha(staging_data: Path) -> str:
     files = sorted(p for p in staging_data.rglob("*") if p.is_file())
+    # Hash is INTENTIONALLY scoped to data/ files only; README, LICENSE, manifest,
+    # tool_versions, and timestamps are excluded so the digest is reproducible across machines.
     digest_map = {p.relative_to(staging_data).as_posix(): sha256_file(p) for p in files}
     canonical = json.dumps(digest_map, sort_keys=True, ensure_ascii=False).encode("utf-8")
     return sha256_bytes(canonical)
