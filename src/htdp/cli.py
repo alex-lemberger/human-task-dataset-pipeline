@@ -47,7 +47,10 @@ def process(raw_dir: Path) -> None:
 @app.command()
 def qc(processed_dir: Path) -> None:
     """Generate a QC report."""
-    raise typer.Exit(0)
+    from htdp.qc.checks import run_qc
+
+    report = run_qc(processed_dir)
+    typer.echo(f"overall: {report['overall']}")
 
 
 @app.command()
