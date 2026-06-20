@@ -60,7 +60,21 @@ def package(
     profile: str = typer.Option(...),
 ) -> None:
     """Package a dataset release (consent-gated)."""
-    raise typer.Exit(0)
+    from htdp.release.package import package_release, ConsentError
+    from htdp.schemas.enums import ReleaseProfile
+
+    try:
+        out = package_release(
+            session_ids,
+            release,
+            ReleaseProfile(profile),
+            Path("data/raw"),
+            Path("data/releases"),
+        )
+    except ConsentError as exc:
+        typer.echo(f"CONSENT BLOCK: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    typer.echo(f"wrote {out}")
 
 
 @app.command()
