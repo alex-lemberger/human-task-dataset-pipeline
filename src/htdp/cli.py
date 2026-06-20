@@ -80,4 +80,11 @@ def package(
 @app.command()
 def replay(release_dir: Path) -> None:
     """Replay a packaged release in MuJoCo."""
-    raise typer.Exit(0)
+    from htdp.replay.player import replay_release, ReplayUnavailable
+
+    try:
+        frames = replay_release(release_dir)
+    except ReplayUnavailable as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"stepped {frames} frames")

@@ -1,0 +1,116 @@
+# Data Contract
+
+This document is the authoritative reference for the folder layout, file naming, and
+CSV/Parquet column specifications used by the Human-Task Dataset Pipeline v0.1.
+
+---
+
+## Folder convention
+
+```
+data/raw/<session_id>/
+  session.json            # session metadata (Schema: Session)
+  consent.json            # participant consent record (Schema: Consent)
+  device_config.json      # stream declarations + coordinate frame (Schema: DeviceConfig)
+  streams/
+    motion_right_wrist.csv
+    motion_left_wrist.csv
+    motion_torso.csv
+    motion_object.csv
+    events.csv
+  video/                  # empty slot in v0.1 (contract present, no MP4)
+  notes.md
+  checksums.sha256        # SHA-256 over all raw bytes (immutability proof)
+
+data/processed/<session_id>/
+  motion.parquet
+  events.parquet
+  qc_report.json
+  qc_report.html
+  manifest.json
+
+data/releases/<release_name>/
+  README.md
+  LICENSE
+  protocol.md
+  participants.csv
+  sessions.csv
+  manifest.json
+  checksums.sha256
+  data/<session_id>/...   # copied raw streams (motion CSVs)
+```
+
+---
+
+## Coordinate frame
+
+Declared in `device_config.json`. All motion data must conform.
+
+- Units: **meters** (position), **seconds** (timestamps).
+- World frame: **right-handed**; x = participant right, y = forward, z = up.
+- Rotations: **quaternion, order `w, x, y, z`**.
+
+---
+
+## Motion CSV columns
+
+File: `streams/motion_<tracker_id>.csv`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `timestamp_s` | float (6dp) | Time since session start, seconds |
+| `tracker_id` | str | Tracker name (e.g. `right_wrist`) |
+| `x_m` | float (6dp) | Position x, meters |
+| `y_m` | float (6dp) | Position y, meters |
+| `z_m` | float (6dp) | Position z, meters |
+| `qw` | float (6dp) | Quaternion w |
+| `qx` | float (6dp) | Quaternion x |
+| `qy` | float (6dp) | Quaternion y |
+| `qz` | float (6dp) | Quaternion z |
+| `quality` | float (6dp) | Tracking quality 0–1 |
+| `defect_tag` | str | Empty unless synthetically injected defect |
+
+Canonical rules: stable column order, 6 decimal places, UTF-8, LF line endings.
+
+---
+
+## Event CSV columns
+
+File: `streams/events.csv`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `timestamp_s` | float (6dp) | Time since session start, seconds |
+| `event_id` | str | Unique event identifier |
+| `label` | str | `start`, `grasp`, `release`, `place`, or `stop` |
+| `phase` | str | Protocol phase name |
+| `source` | str | `synthetic` in v0.1 |
+| `confidence` | float (6dp) | Event detection confidence 0–1 |
+| `notes` | str | Free text |
+
+Event ordering invariant: `start < grasp < release < place < stop`. All events must
+fall within the session time bounds.
+
+---
+
+## Schemas
+
+Pydantic models in `src/htdp/schemas/models.py`. JSON Schema exported to `docs/schemas/`.
+
+**Changing a schema requires:**
+1. Updating the Pydantic model.
+2. Re-exporting JSON schemas (`uv run python -c "from pathlib import Path; from htdp.schemas.export import export_json_schemas; export_json_schemas(Path('docs/schemas'))"`).
+3. Updating this document.
+4. Updating or adding tests.
+
+---
+
+## Canonical serialization rules (reproducibility)
+
+- JSON: sorted keys, 2-space indent, UTF-8, LF.
+- CSV: stable column order (as above), 6dp floats, UTF-8, LF.
+- Parquet: reproducibility asserted at the logical manifest/checksum level, not raw bytes.
+- Generated timestamps: seed-derived or excluded from hashed content.
+- Tool versions: recorded in the manifest but excluded from the reproducibility checksum.
+
+These rules ensure: same code + `uv.lock` + platform + seed + inputs → identical release-manifest checksums.
