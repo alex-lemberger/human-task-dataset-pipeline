@@ -34,7 +34,14 @@ def validate(raw_dir: Path) -> None:
 @app.command()
 def process(raw_dir: Path) -> None:
     """Process a raw session into Parquet."""
-    raise typer.Exit(0)
+    from htdp.processing.extract import process_session
+
+    try:
+        out = process_session(raw_dir, Path("data/processed"))
+    except ValueError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"wrote {out}")
 
 
 @app.command()
