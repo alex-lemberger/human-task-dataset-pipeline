@@ -53,3 +53,18 @@ def test_package_is_reproducible(tmp_path: Path):
     sha_a = json.loads((a / "manifest.json").read_text())["manifest_sha256"]
     sha_b = json.loads((b / "manifest.json").read_text())["manifest_sha256"]
     assert sha_a == sha_b
+
+
+def test_absent_modalities_recorded_when_video_present_but_forbidden(tmp_path: Path):
+    raw = _raw(tmp_path)
+    # video present on disk, but consent forbids distributing raw video
+    (raw / "synth-0001" / "video" / "clip.mp4").write_bytes(b"\x00\x01")
+    consent = raw / "synth-0001/consent.json"
+    data = json.loads(consent.read_text(encoding="utf-8"))
+    data["distribute_raw_video"] = False
+    consent.write_text(json.dumps(data), encoding="utf-8")
+    out = package_release(
+        ["synth-0001"], "rel-vid", ReleaseProfile.COMMERCIAL_DATASET, raw, tmp_path / "releases"
+    )
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert "video" in manifest["absent_modalities"]

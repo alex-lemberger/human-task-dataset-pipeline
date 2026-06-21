@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from htdp.consent.modalities import MODALITY_GLOBS
+from htdp.consent.modalities import MODALITY_GLOBS, resolve_absent
 from htdp.consent.profiles import check_consent
 from htdp.io.canonical import dump_json, write_csv
 from htdp.io.checksums import sha256_bytes, sha256_file, write_checksums
@@ -53,6 +53,7 @@ def package_release(
         raise FileExistsError(f"release already exists: {final}")
 
     # Consent gate FIRST — fail before any output.
+    consents: list[Consent] = []
     for sid in session_ids:
         consent = Consent.model_validate_json(
             (raw_root / sid / "consent.json").read_text(encoding="utf-8")
@@ -60,9 +61,12 @@ def package_release(
         missing = check_consent(consent, profile)
         if missing:
             raise ConsentError(f"{sid}: profile {profile.value} requires {missing}")
+        consents.append(consent)
 
-    # v0.1: video + EEG are never captured -> always recorded absent (spec §8.1).
-    absent = ["eeg", "video"]
+    # Modality filtering: a modality is absent if any session forbids it (consent)
+    # or it is not present on disk. drop_globs lists files to omit from staging.
+    present = _present_modalities(session_ids, raw_root)
+    absent, drop_globs = resolve_absent(consents, present)
 
     releases_root.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{release_name}.", dir=releases_root))
