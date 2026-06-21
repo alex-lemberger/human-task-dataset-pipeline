@@ -27,3 +27,47 @@ def matrix_to_tsv(header: list[str], matrix: list[list[str]]) -> str:
     lines = ["\t".join(header)]
     lines.extend("\t".join(row) for row in matrix)
     return "\n".join(lines) + "\n"
+
+
+SUFFIX_META: dict[str, tuple[str, str, str]] = {
+    "x_m": ("POS", "x", "m"),
+    "y_m": ("POS", "y", "m"),
+    "z_m": ("POS", "z", "m"),
+    "qw": ("ORNT", "quat_w", "n/a"),
+    "qx": ("ORNT", "quat_x", "n/a"),
+    "qy": ("ORNT", "quat_y", "n/a"),
+    "qz": ("ORNT", "quat_z", "n/a"),
+    "quality": ("MISC", "n/a", "n/a"),
+}
+CHANNELS_HEADER: list[str] = [
+    "name",
+    "type",
+    "component",
+    "tracked_point",
+    "units",
+    "sampling_frequency",
+]
+
+
+def channels_rows(trackers: list[str], fps: float) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for t in trackers:
+        for s in SUFFIXES:
+            typ, component, units = SUFFIX_META[s]
+            rows.append(
+                {
+                    "name": f"{t}_{s}",
+                    "type": typ,
+                    "component": component,
+                    "tracked_point": t,
+                    "units": units,
+                    "sampling_frequency": str(fps),
+                }
+            )
+    return rows
+
+
+def dicts_to_tsv(header: list[str], rows: list[dict[str, str]]) -> str:
+    lines = ["\t".join(header)]
+    lines.extend("\t".join(r[h] for h in header) for r in rows)
+    return "\n".join(lines) + "\n"
