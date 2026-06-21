@@ -78,8 +78,8 @@ def test_not_present_is_absent_but_not_dropped():
 
 def test_release_level_union_one_forbidding_consent_drops_for_all():
     consents = [_c(), _c(distribute_raw_video=False)]  # one allows, one forbids
-    absent, drop = resolve_absent(consents, {"video"})
-    assert absent == ["video"]
+    absent, drop = resolve_absent(consents, {"video", "eeg"})  # both present
+    assert absent == ["video"]  # eeg allowed+present -> kept; video forbidden by one -> absent
     assert drop == ["video/**/*"]
 
 
