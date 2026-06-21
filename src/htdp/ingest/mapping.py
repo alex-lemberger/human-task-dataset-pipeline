@@ -109,3 +109,23 @@ def extract_motion(stream: XdfStream, m: MotionStreamMap) -> list[dict[str, obje
             row[key] = float(sample[idx])
         rows.append(row)
     return rows
+
+
+def extract_eeg(stream: XdfStream, m: EegStreamMap) -> tuple[list[str], list[dict[str, object]]]:
+    if stream.channel_format == "string":
+        raise MappingError(f"eeg stream '{stream.name}' must be numeric, got string format")
+    labels = list(m.channels)
+    rows: list[dict[str, object]] = []
+    for ts, sample in zip(stream.time_stamps, stream.time_series):
+        assert isinstance(sample, list)
+        row: dict[str, object] = {"raw_ts": float(ts)}
+        for label in labels:
+            idx = m.channels[label]
+            if idx >= len(sample):
+                raise MappingError(
+                    f"eeg stream '{stream.name}' channel '{label}' index {idx} "
+                    f"out of range (sample has {len(sample)} channels)"
+                )
+            row[label] = float(sample[idx])
+        rows.append(row)
+    return labels, rows
