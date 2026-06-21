@@ -5,7 +5,20 @@ from dataclasses import dataclass
 
 from htdp.ingest.frame import IDENTITY, Quat, apply_transform
 from htdp.ingest.mapping import IngestMap, parse_ingest_map
-from htdp.schemas.models import Consent, DeviceConfig, Session
+from htdp.schemas.models import (
+    Consent,
+    CoordinateFrame,
+    DeviceConfig,
+    Session,
+    StreamRef,
+)
+
+import shutil
+from importlib.metadata import version
+from pathlib import Path
+
+from htdp.io.canonical import dump_json, write_csv
+from htdp.io.checksums import write_checksums
 
 _MOTION_COLS = [
     "timestamp_s",
@@ -134,3 +147,51 @@ def build_event_rows(
             }
         )
     return rows
+
+
+def write_raw_folder(
+    out_dir: Path,
+    *,
+    session: Session,
+    consent: Consent,
+    device_config_id: str,
+    motion_out: dict[str, list[dict[str, object]]],
+    event_rows: list[dict[str, object]],
+    source_xdf_name: str,
+    force: bool = False,
+) -> Path:
+    if out_dir.exists():
+        if not force:
+            raise FileExistsError(f"raw session already exists: {out_dir} (use force=True)")
+        shutil.rmtree(out_dir)
+    (out_dir / "streams").mkdir(parents=True)
+    (out_dir / "video").mkdir()
+
+    stream_refs: list[StreamRef] = []
+    for tracker in _TRACKER_ORDER:
+        if tracker not in motion_out:
+            continue
+        rel = f"streams/motion_{tracker}.csv"
+        write_csv(motion_out[tracker], _MOTION_COLS, out_dir / rel)
+        stream_refs.append(StreamRef(name=tracker, path=rel, fmt="csv", role="motion"))
+    write_csv(event_rows, _EVENT_COLS, out_dir / "streams/events.csv")
+    stream_refs.append(
+        StreamRef(name="events", path="streams/events.csv", fmt="csv", role="events")
+    )
+
+    device_out = DeviceConfig(
+        device_config_id=device_config_id,
+        frame=CoordinateFrame(),
+        streams=stream_refs,
+    )
+    dump_json(session, out_dir / "session.json")
+    dump_json(consent, out_dir / "consent.json")
+    dump_json(device_out, out_dir / "device_config.json")
+    (out_dir / "notes.md").write_text(
+        f"# Ingested session {session.session_id}\n"
+        f"Source: {source_xdf_name}. Ingested with htdp {version('htdp')}.\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    write_checksums(out_dir)
+    return out_dir
