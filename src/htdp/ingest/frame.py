@@ -26,3 +26,8 @@ def rotate_vector(q: Quat, v: Vec3) -> Vec3:
     p: Quat = (0.0, v[0], v[1], v[2])
     r = quat_mul(quat_mul(q, p), _conj(q))
     return (r[1], r[2], r[3])
+
+
+def apply_transform(rotation: Quat, pos: Vec3, quat: Quat) -> tuple[Vec3, Quat]:
+    """Rotate a position vector and compose orientation into the contract frame."""
+    return rotate_vector(rotation, pos), quat_mul(rotation, quat)
