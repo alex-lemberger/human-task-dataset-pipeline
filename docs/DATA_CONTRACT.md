@@ -84,12 +84,29 @@ File: `streams/events.csv`
 | `event_id` | str | Unique event identifier |
 | `label` | str | `start`, `grasp`, `release`, `place`, or `stop` |
 | `phase` | str | Protocol phase name |
-| `source` | str | `synthetic` in v0.1 |
+| `source` | str | `synthetic` (generated) or `real` (ingested capture) |
 | `confidence` | float (6dp) | Event detection confidence 0–1 |
 | `notes` | str | Free text |
 
 Event ordering invariant: `start < grasp < release < place < stop`. All events must
 fall within the session time bounds.
+
+---
+
+## Pre-raw ingest step (`htdp ingest`)
+
+Real LSL recordings (.xdf files) can be ingested into raw session folders using:
+
+    htdp ingest <file.xdf> <ingest.json> --out data/raw/<session_id>
+
+The `ingest.json` sidecar is a JSON file with keys:
+- `session` — Session schema fields (participant, protocol, etc.)
+- `consent` — Consent record
+- `device_config` — DeviceConfig (frame, streams)
+- `ingest_map` — stream/channel mapping (motion streams + events stream)
+- `frame_transform` (optional) — `{"rotation": [w,x,y,z]}` to rotate data into contract frame; consumed by ingest but **not persisted** into `device_config.json`
+
+The ingest adapter writes canonical raw folder layout with `source="real"` in events and empty `defect_tag=""` in motion CSVs. Install the optional extra first: `uv sync --extra ingest`.
 
 ---
 

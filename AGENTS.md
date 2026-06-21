@@ -15,7 +15,7 @@ spine.
 
 ## Quality gate (run before every commit)
 `uv run ruff format --check . && uv run ruff check . && uv run pytest`
-Typecheck: `uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io`
+Typecheck: `uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io src/htdp/ingest`
 
 ## Reproducibility
 Same code + uv.lock + platform + seed + inputs → identical release-manifest checksum.
@@ -39,7 +39,7 @@ intentionally revised.
 ## Architecture summary
 
 ```
-synth → raw/ → validate → process → processed/ → qc → package → releases/ → replay
+ingest (xdf → raw/, optional) | synth → raw/ → validate → process → processed/ → qc → package → releases/ → replay
 ```
 
 Three data tiers on disk:
@@ -48,6 +48,16 @@ Three data tiers on disk:
 - **releases/** — versioned, packaged. The product unit.
 
 CLI is the only product surface. No server processes, no dashboard.
+
+Usage:
+- `uv sync --extra ingest` (install pyxdf optional dependency)
+- `htdp ingest <file.xdf> <ingest.json> --out data/raw`
+- `htdp synth --out data/raw`
+- `htdp validate data/raw/<session_id>`
+- `htdp process data/raw/<session_id>`
+- `htdp qc data/processed/<session_id>`
+- `htdp package --release <name> --profile <profile> <session_ids...>`
+- `htdp replay data/releases/<name>`
 
 ## Extending the project
 
