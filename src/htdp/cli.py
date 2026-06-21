@@ -61,6 +61,19 @@ def ingest_video(
 
 
 @app.command()
+def export_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> None:
+    """Export a raw session to a minimal Motion-BIDS dataset tree."""
+    from htdp.export.bids import BidsExportError, export_motion_bids
+
+    try:
+        d = export_motion_bids(raw_dir, out_dir, force=force)
+    except BidsExportError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"wrote {d}")
+
+
+@app.command()
 def validate(raw_dir: Path) -> None:
     """Validate a raw session folder."""
     from htdp.validate import validate_session
