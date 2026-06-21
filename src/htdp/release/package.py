@@ -75,7 +75,12 @@ def package_release(
         participants: list[dict[str, object]] = []
         sessions: list[dict[str, object]] = []
         for sid in session_ids:
-            shutil.copytree(raw_root / sid, data_dir / sid)
+            dest = data_dir / sid
+            shutil.copytree(raw_root / sid, dest)
+            for pattern in drop_globs:
+                for p in sorted(dest.glob(pattern)):
+                    if p.is_file():
+                        p.unlink()
             session = Session.model_validate_json(
                 (raw_root / sid / "session.json").read_text(encoding="utf-8")
             )
