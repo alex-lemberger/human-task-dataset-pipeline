@@ -71,3 +71,18 @@ def dicts_to_tsv(header: list[str], rows: list[dict[str, str]]) -> str:
     lines = ["\t".join(header)]
     lines.extend("\t".join(r[h] for h in header) for r in rows)
     return "\n".join(lines) + "\n"
+
+
+EVENTS_HEADER: list[str] = ["onset", "duration", "trial_type", "value"]
+
+
+def events_rows(events: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [
+        {
+            "onset": e["timestamp_s"],
+            "duration": "n/a",
+            "trial_type": e["label"],
+            "value": e["event_id"],
+        }
+        for e in events
+    ]
