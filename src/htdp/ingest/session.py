@@ -4,7 +4,8 @@ import json
 from dataclasses import dataclass
 
 from htdp.ingest.frame import IDENTITY, Quat, apply_transform
-from htdp.ingest.mapping import IngestMap, parse_ingest_map
+from htdp.ingest.mapping import IngestMap, extract_motion, parse_ingest_map
+from htdp.ingest.reader import load_xdf_streams
 from htdp.schemas.models import (
     Consent,
     CoordinateFrame,
@@ -195,3 +196,40 @@ def write_raw_folder(
     )
     write_checksums(out_dir)
     return out_dir
+
+
+def ingest_xdf(
+    xdf_path: Path,
+    sidecar_path: Path,
+    out_dir: Path,
+    force: bool = False,
+) -> Path:
+    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    parsed = validate_sidecar(sidecar)  # fail fast before reading the XDF
+
+    streams = load_xdf_streams(xdf_path)
+
+    motion_raw: dict[str, list[dict[str, object]]] = {}
+    for stream_name, m in parsed.ingest_map.motion.items():
+        if stream_name not in streams:
+            raise KeyError(f"ingest_map stream '{stream_name}' not found in XDF")
+        motion_raw[m.tracker_id] = extract_motion(streams[stream_name], m)
+
+    t0 = compute_t0(motion_raw)
+    motion_out = build_motion_rows(motion_raw, parsed.rotation, t0)
+
+    ev = streams[parsed.ingest_map.events_stream]
+    payloads = [s if isinstance(s, str) else "" for s in ev.time_series]
+    event_rows = build_event_rows(ev.time_stamps, payloads, t0)
+
+    session = parsed.session.model_copy(update={"start_time_s": t0})
+    return write_raw_folder(
+        out_dir,
+        session=session,
+        consent=parsed.consent,
+        device_config_id=parsed.device_config.device_config_id,
+        motion_out=motion_out,
+        event_rows=event_rows,
+        source_xdf_name=xdf_path.name,
+        force=force,
+    )
