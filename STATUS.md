@@ -65,7 +65,7 @@ Spec §9 says replay reads Parquet, but the release ships raw CSV. Reconcile in 
 ## Quality gate (run before every commit)
 ```
 uv run ruff format --check . && uv run ruff check . && uv run pytest
-uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io src/htdp/ingest
+uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io src/htdp/ingest src/htdp/export
 ```
 
 ## Next session — start here

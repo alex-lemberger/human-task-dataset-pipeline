@@ -30,7 +30,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - Video capture (MP4 population in the `video/` slot) — **in progress (ingest-video landed)**
 - EEG capture and EEG-BIDS export
 - ROS 2 / rosbag2 export
-- Motion-BIDS export
+- Motion-BIDS export — **in progress (single-session export landed)**
 - IK / robot-arm replay (beyond mocap spheres)
 - Consent *filtering* — strip disallowed modalities from a release while still including the session — **in progress (modality filtering landed)**
 - Multi-session queryable catalog

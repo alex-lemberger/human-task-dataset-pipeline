@@ -164,3 +164,19 @@ Video files are populated via `htdp ingest-video`, which registers a video
 `checksums.sha256`. At release time, consent filtering respects the
 `distribute_raw_video` flag: sessions that disallow video distribution have
 their video files excluded from the packaged release.
+
+---
+
+## Motion-BIDS export
+
+The `htdp export-bids <raw_dir> <out_dir> [--force]` command reads a single raw session
+and writes a minimal Motion-BIDS (BEP029) dataset tree. Key characteristics:
+
+- Single raw session → separate BIDS directory; the raw session is never mutated.
+- Irregular sampling is preserved via an explicit `timestamp_s` column and `n/a` fill
+  (no resampling).
+- The internal QC metadata column `defect_tag` is **not exported** — it is pipeline-internal,
+  not motion data.
+- BIDS version: **1.10.0**.
+- Labels (`participant_id`, `protocol_id`, `device_config_id`) are sanitized to
+  alphanumerics for BIDS entity compliance.

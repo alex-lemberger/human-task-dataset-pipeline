@@ -18,7 +18,7 @@ spine.
 
 ## Quality gate (run before every commit)
 `uv run ruff format --check . && uv run ruff check . && uv run pytest`
-Typecheck: `uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io src/htdp/ingest`
+Typecheck: `uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io src/htdp/ingest src/htdp/export`
 
 ## Reproducibility
 Same code + uv.lock + platform + seed + inputs → identical release-manifest checksum.
@@ -62,6 +62,7 @@ Usage:
 - `htdp qc data/processed/<session_id>`
 - `htdp package --release <name> --profile <profile> <session_ids...>`
 - `htdp replay data/releases/<name>`
+- `htdp export-bids <raw_dir> <out_dir> [--force]` (**read-only export**; writes a separate BIDS tree, never mutates raw/processed/releases)
 
 ## Extending the project
 
