@@ -49,3 +49,47 @@ def test_parse_requires_exactly_one_events_stream():
 def test_parse_requires_at_least_one_motion_stream():
     with pytest.raises(MappingError, match="motion"):
         parse_ingest_map({"marker": {"role": "events"}})
+
+
+from htdp.ingest.mapping import extract_motion  # noqa: E402
+from htdp.ingest.reader import XdfStream  # noqa: E402
+
+
+def _motion_stream():
+    return XdfStream(
+        name="wrist",
+        type="motion",
+        channel_format="double64",
+        time_stamps=[10.0, 10.01],
+        time_series=[
+            [0.1, 0.2, 0.9, 1.0, 0.0, 0.0, 0.0, 1.0],
+            [0.11, 0.21, 0.91, 1.0, 0.0, 0.0, 0.0, 1.0],
+        ],
+    )
+
+
+def test_extract_motion_builds_rows():
+    m = parse_ingest_map(_valid_raw()).motion["wrist"]
+    rows = extract_motion(_motion_stream(), m)
+    assert len(rows) == 2
+    assert rows[0]["raw_ts"] == 10.0
+    assert rows[0]["tracker_id"] == "right_wrist"
+    assert rows[1]["x_m"] == 0.11
+    assert rows[0]["quality"] == 1.0
+
+
+def test_extract_motion_rejects_string_stream():
+    m = parse_ingest_map(_valid_raw()).motion["wrist"]
+    bad = XdfStream(
+        name="wrist", type="motion", channel_format="string", time_stamps=[0.0], time_series=["x"]
+    )
+    with pytest.raises(MappingError, match="numeric"):
+        extract_motion(bad, m)
+
+
+def test_extract_motion_channel_index_out_of_range_raises():
+    m = parse_ingest_map(_valid_raw()).motion["wrist"]
+    bad = _motion_stream()
+    bad.time_series = [[0.1, 0.2]]  # too few channels
+    with pytest.raises(MappingError, match="out of range"):
+        extract_motion(bad, m)

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from htdp.ingest.reader import XdfStream
+
 CONTRACT_TRACKERS: tuple[str, ...] = ("right_wrist", "left_wrist", "torso", "object")
 _MOTION_CHANNEL_KEYS: tuple[str, ...] = (
     "x_m",
@@ -69,3 +71,22 @@ def parse_ingest_map(raw: dict[str, object]) -> IngestMap:
     if not motion:
         raise MappingError("ingest_map must declare at least one 'motion' stream")
     return IngestMap(motion=motion, events_stream=events_streams[0])
+
+
+def extract_motion(stream: XdfStream, m: MotionStreamMap) -> list[dict[str, object]]:
+    if stream.channel_format == "string":
+        raise MappingError(f"motion stream '{stream.name}' must be numeric, got string format")
+    rows: list[dict[str, object]] = []
+    for ts, sample in zip(stream.time_stamps, stream.time_series):
+        assert isinstance(sample, list)
+        row: dict[str, object] = {"raw_ts": float(ts), "tracker_id": m.tracker_id}
+        for key in _MOTION_CHANNEL_KEYS:
+            idx = m.channels[key]
+            if idx >= len(sample):
+                raise MappingError(
+                    f"stream '{stream.name}' channel '{key}' index {idx} "
+                    f"out of range (sample has {len(sample)} channels)"
+                )
+            row[key] = float(sample[idx])
+        rows.append(row)
+    return rows
