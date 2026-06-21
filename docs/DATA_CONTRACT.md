@@ -142,3 +142,25 @@ never appears in this list.
 - Tool versions: recorded in the manifest but excluded from the reproducibility checksum.
 
 These rules ensure: same code + `uv.lock` + platform + seed + inputs → identical release-manifest checksums.
+
+---
+
+## Video stream (opaque MP4)
+
+A raw session may contain a `video/` directory with one or more `.mp4` files.
+Each video file is registered in `device_config.json` as a `StreamRef` with:
+
+- `role`: `"video"`
+- `fmt`: `"mp4"`
+- `path`: `"video/<name>.mp4"` (relative to session root)
+- `rate_hz`: the declared frame rate (fps) from the ingest sidecar
+
+The `.mp4` file is stored **opaque**: it is copied as-is into the raw session
+and never decoded, transcoded, or introspected by any pipeline stage. Frame
+extraction and synchronization are deferred to v0.2+.
+
+Video files are populated via `htdp ingest-video`, which registers a video
+`StreamRef`, copies the file into the `video/` slot, and re-seals
+`checksums.sha256`. At release time, consent filtering respects the
+`distribute_raw_video` flag: sessions that disallow video distribution have
+their video files excluded from the packaged release.

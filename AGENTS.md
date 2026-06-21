@@ -10,6 +10,9 @@ spine.
 - Do NOT store raw data in a database.
 - Do NOT bypass consent checks. `package` blocks on conflict and writes nothing.
 - Do NOT modify raw data during processing. Raw is immutable.
+- `htdp ingest-video` re-writes `device_config.json` and `checksums.sha256` of an
+  existing raw session as a **raw-construction** step (populating the `video/`
+  slot), which is distinct from the prohibited *processing-stage* mutation of raw.
 - Keep fixtures tiny and deterministic. Update schemas and docs together.
 - Preserve manifests + checksums. Make errors explicit.
 
@@ -52,6 +55,7 @@ CLI is the only product surface. No server processes, no dashboard.
 Usage:
 - `uv sync --extra ingest` (install pyxdf optional dependency)
 - `htdp ingest <file.xdf> <ingest.json> --out data/raw`
+- `htdp ingest-video <session_dir> <clip.mp4> <video.json> [--force]`
 - `htdp synth --out data/raw`
 - `htdp validate data/raw/<session_id>`
 - `htdp process data/raw/<session_id>`

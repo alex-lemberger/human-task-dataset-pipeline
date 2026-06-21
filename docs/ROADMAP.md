@@ -27,7 +27,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - Postgres / MinIO / FastAPI / Docker Compose
 - Angular operations dashboard
 - Real hardware: VIVE tracker capture, LSL streaming, XDF ingest (`htdp ingest`: XDF → raw representation) — **in progress (XDF adapter landed)**
-- Video capture (MP4 population in the `video/` slot)
+- Video capture (MP4 population in the `video/` slot) — **in progress (ingest-video landed)**
 - EEG capture and EEG-BIDS export
 - ROS 2 / rosbag2 export
 - Motion-BIDS export
