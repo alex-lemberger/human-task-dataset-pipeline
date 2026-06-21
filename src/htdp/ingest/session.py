@@ -233,3 +233,19 @@ def ingest_xdf(
         source_xdf_name=xdf_path.name,
         force=force,
     )
+
+
+def build_eeg_rows(
+    eeg_raw: dict[str, tuple[list[str], list[dict[str, object]]]],
+    t0: float,
+) -> dict[str, tuple[list[str], list[dict[str, object]]]]:
+    out: dict[str, tuple[list[str], list[dict[str, object]]]] = {}
+    for eeg_id, (labels, rows) in eeg_raw.items():
+        built: list[dict[str, object]] = []
+        for r in rows:
+            new_row: dict[str, object] = {"timestamp_s": float(r["raw_ts"]) - t0}  # type: ignore[arg-type]
+            for label in labels:
+                new_row[label] = float(r[label])  # type: ignore[arg-type]
+            built.append(new_row)
+        out[eeg_id] = (labels, built)
+    return out
