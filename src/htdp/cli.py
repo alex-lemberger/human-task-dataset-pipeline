@@ -19,6 +19,28 @@ def synth(out: Path = typer.Option(..., "--out"), seed: int = 0, force: bool = F
 
 
 @app.command()
+def ingest(
+    xdf_file: Path,
+    sidecar: Path,
+    out: Path = typer.Option(..., "--out"),
+    force: bool = False,
+) -> None:
+    """Ingest an LSL .xdf recording into a raw session folder."""
+    from pydantic import ValidationError
+
+    from htdp.ingest.mapping import MappingError
+    from htdp.ingest.reader import IngestUnavailable
+    from htdp.ingest.session import ingest_xdf
+
+    try:
+        d = ingest_xdf(xdf_file, sidecar, out, force=force)
+    except (IngestUnavailable, MappingError, ValidationError, FileExistsError, KeyError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"wrote {d}")
+
+
+@app.command()
 def validate(raw_dir: Path) -> None:
     """Validate a raw session folder."""
     from htdp.validate import validate_session
