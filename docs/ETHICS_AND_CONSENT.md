@@ -47,8 +47,19 @@ If any required flag is absent or false in `consent.json`, `package` **refuses a
 writes nothing**. There is no partial output. The error message names the missing flag
 explicitly. This is the core safety guarantee of the pipeline.
 
-Consent *filtering* (stripping disallowed modalities from a release while including the
-session) is deferred to v0.2.
+### Modality filtering
+
+Permission flags (`commercial_use`, `model_training`, `third_party_access`,
+`public_release`) **block** — a session whose consent lacks a required permission
+flag is excluded from the release entirely, and nothing is written.
+
+Modality flags (`distribute_raw_video`, `distribute_raw_eeg`) **filter** — the
+session remains included but disallowed modality files are omitted from the staged
+release and listed in `manifest.absent_modalities`. Motion data is never filtered.
+
+Consent filtering uses a **release-level union**: if any session in a release forbids
+a modality, that modality is dropped for the whole release. This ensures no single
+participant's disallowed data leaks into a shared release.
 
 ---
 

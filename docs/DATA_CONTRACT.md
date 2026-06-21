@@ -122,6 +122,17 @@ Pydantic models in `src/htdp/schemas/models.py`. JSON Schema exported to `docs/s
 
 ---
 
+## Absent modalities in release manifests
+
+The `absent_modalities` field in the release manifest (`manifest.json`) is now
+**computed** from consent flags and on-disk file presence — no longer a fixed
+`["eeg", "video"]`. A modality is recorded as absent if any session forbids it via its
+consent (`distribute_raw_video`, `distribute_raw_eeg`) or if no files matching the
+modality's glob patterns exist in any session. Motion data is never filtered and
+never appears in this list.
+
+---
+
 ## Canonical serialization rules (reproducibility)
 
 - JSON: sorted keys, 2-space indent, UTF-8, LF.

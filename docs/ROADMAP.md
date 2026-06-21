@@ -32,7 +32,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - ROS 2 / rosbag2 export
 - Motion-BIDS export
 - IK / robot-arm replay (beyond mocap spheres)
-- Consent *filtering* — strip disallowed modalities from a release while still including the session
+- Consent *filtering* — strip disallowed modalities from a release while still including the session — **in progress (modality filtering landed)**
 - Multi-session queryable catalog
 - Agent-orchestration layer (Hermes / OpenClaw)
 - Remote / multi-user access
@@ -52,5 +52,4 @@ The following were considered and explicitly deferred — not missed:
 - Video and EEG (schema slots exist; data capture deferred)
 - ROS 2 / rosbag2 (deferred; export adapter planned)
 - IK/robot-arm replay (mocap spheres prove round-trip; arm kinematics in v0.2)
-- Consent filtering vs. blocking (blocking is simpler and safer; filtering adds complexity)
 - Multi-session catalog (single-session pipeline is enough for v0.1 trust claim)
