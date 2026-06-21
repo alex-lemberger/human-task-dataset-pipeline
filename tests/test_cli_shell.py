@@ -59,3 +59,30 @@ def test_ingest_roundtrip_cli(tmp_path):
     )
     assert result.exit_code == 0, result.output
     assert (out / "session.json").exists()
+
+
+def test_ingest_video_happy_and_missing(tmp_path):
+    import json
+
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+    from htdp.synth.generate import generate_session
+
+    generate_session(tmp_path / "raw", seed=1)
+    session = tmp_path / "raw" / "synth-0001"
+    mp4 = tmp_path / "clip.mp4"
+    mp4.write_bytes(b"\x00\x00\x00\x18ftyp")
+    sidecar = tmp_path / "video.json"
+    sidecar.write_text(json.dumps({"name": "frontal", "fps": 30.0}), encoding="utf-8")
+
+    runner = CliRunner()
+    ok = runner.invoke(app, ["ingest-video", str(session), str(mp4), str(sidecar)])
+    assert ok.exit_code == 0, ok.output
+    assert (session / "video" / "frontal.mp4").exists()
+
+    bad = runner.invoke(
+        app, ["ingest-video", str(session), str(tmp_path / "nope.mp4"), str(sidecar)]
+    )
+    assert bad.exit_code == 1
+    assert "error:" in bad.output

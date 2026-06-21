@@ -41,6 +41,26 @@ def ingest(
 
 
 @app.command()
+def ingest_video(
+    session_dir: Path,
+    mp4_file: Path,
+    sidecar: Path,
+    force: bool = False,
+) -> None:
+    """Augment a raw session with a video file (registers it in device_config)."""
+    from pydantic import ValidationError
+
+    from htdp.ingest.video import VideoIngestError, ingest_video as _ingest_video
+
+    try:
+        d = _ingest_video(session_dir, mp4_file, sidecar, force=force)
+    except (VideoIngestError, ValidationError, FileNotFoundError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"wrote {d}")
+
+
+@app.command()
 def validate(raw_dir: Path) -> None:
     """Validate a raw session folder."""
     from htdp.validate import validate_session
