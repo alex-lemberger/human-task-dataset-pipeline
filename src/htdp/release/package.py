@@ -6,11 +6,23 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from htdp.consent.modalities import MODALITY_GLOBS
 from htdp.consent.profiles import check_consent
 from htdp.io.canonical import dump_json, write_csv
 from htdp.io.checksums import sha256_bytes, sha256_file, write_checksums
 from htdp.schemas.enums import ReleaseProfile
 from htdp.schemas.models import Consent, DatasetRelease, Session
+
+
+def _present_modalities(session_ids: list[str], raw_root: Path) -> set[str]:
+    present: set[str] = set()
+    for modality, globs in MODALITY_GLOBS.items():
+        for sid in session_ids:
+            session_dir = raw_root / sid
+            if any(p.is_file() for pattern in globs for p in session_dir.glob(pattern)):
+                present.add(modality)
+                break
+    return present
 
 
 class ConsentError(RuntimeError):
