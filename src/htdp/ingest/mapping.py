@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from htdp.ingest.reader import XdfStream
 
@@ -28,14 +28,22 @@ class MotionStreamMap:
 
 
 @dataclass
+class EegStreamMap:
+    eeg_id: str
+    channels: dict[str, int]
+
+
+@dataclass
 class IngestMap:
     motion: dict[str, MotionStreamMap]
     events_stream: str
+    eeg: dict[str, EegStreamMap] = field(default_factory=dict)
 
 
 def parse_ingest_map(raw: dict[str, object]) -> IngestMap:
     motion: dict[str, MotionStreamMap] = {}
     events_streams: list[str] = []
+    eeg: dict[str, EegStreamMap] = {}
     for stream_name, entry in raw.items():
         if not isinstance(entry, dict):
             raise MappingError(f"ingest_map entry for '{stream_name}' must be an object")
@@ -61,6 +69,17 @@ def parse_ingest_map(raw: dict[str, object]) -> IngestMap:
                 tracker_id=str(tracker_id),
                 channels={k: int(channels[k]) for k in _MOTION_CHANNEL_KEYS},
             )
+        elif role == "eeg":
+            eeg_id = entry.get("eeg_id")
+            if not eeg_id or not isinstance(eeg_id, str):
+                raise MappingError(f"stream '{stream_name}' eeg entry needs non-empty 'eeg_id'")
+            channels = entry.get("channels")
+            if not isinstance(channels, dict) or not channels:
+                raise MappingError(f"stream '{stream_name}' eeg entry needs non-empty 'channels'")
+            eeg[stream_name] = EegStreamMap(
+                eeg_id=eeg_id,
+                channels={str(k): int(v) for k, v in channels.items()},
+            )
         else:
             raise MappingError(f"stream '{stream_name}' has unknown role '{role}'")
 
@@ -70,7 +89,7 @@ def parse_ingest_map(raw: dict[str, object]) -> IngestMap:
         )
     if not motion:
         raise MappingError("ingest_map must declare at least one 'motion' stream")
-    return IngestMap(motion=motion, events_stream=events_streams[0])
+    return IngestMap(motion=motion, events_stream=events_streams[0], eeg=eeg)
 
 
 def extract_motion(stream: XdfStream, m: MotionStreamMap) -> list[dict[str, object]]:
