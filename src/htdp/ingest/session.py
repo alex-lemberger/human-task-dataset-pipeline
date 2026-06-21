@@ -159,6 +159,7 @@ def write_raw_folder(
     motion_out: dict[str, list[dict[str, object]]],
     event_rows: list[dict[str, object]],
     source_xdf_name: str,
+    eeg_out: dict[str, tuple[list[str], list[dict[str, object]]]] | None = None,
     force: bool = False,
 ) -> Path:
     if out_dir.exists():
@@ -179,6 +180,11 @@ def write_raw_folder(
     stream_refs.append(
         StreamRef(name="events", path="streams/events.csv", fmt="csv", role="events")
     )
+
+    for eeg_id, (labels, rows) in (eeg_out or {}).items():
+        rel = f"streams/eeg_{eeg_id}.csv"
+        write_csv(rows, ["timestamp_s"] + labels, out_dir / rel)
+        stream_refs.append(StreamRef(name=eeg_id, path=rel, fmt="csv", role="eeg"))
 
     device_out = DeviceConfig(
         device_config_id=device_config_id,
