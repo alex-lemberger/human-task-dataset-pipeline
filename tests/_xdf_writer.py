@@ -66,7 +66,8 @@ def _stream_footer(stream_id: int, stamps: list[float]) -> bytes:
 
 
 def write_xdf(raw_dir: Path, xdf_path: Path) -> None:
-    blob = _chunk(1, b'<?xml version="1.0"?><info><version>1.0</version></info>')
+    blob = b"XDF:"
+    blob += _chunk(1, b'<?xml version="1.0"?><info><version>1.0</version></info>')
 
     stream_id = 1
     for tracker in _TRACKERS:

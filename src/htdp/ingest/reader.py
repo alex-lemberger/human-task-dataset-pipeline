@@ -19,11 +19,14 @@ class XdfStream:
 
 def load_xdf_streams(path: Path) -> dict[str, XdfStream]:
     try:
-        import pyxdf  # type: ignore[import-not-found]
+        import pyxdf  # type: ignore[import-untyped]
     except ImportError as exc:
         raise IngestUnavailable("install with: uv sync --extra ingest") from exc
 
-    streams, _ = pyxdf.load_xdf(str(path))
+    # Keep recorded timestamps verbatim: pyxdf's default dejitter resamples them
+    # onto a regression line, and clock-sync would shift them. Ingest must record
+    # the LSL clock as captured; drift is detected downstream by `qc`, not here.
+    streams, _ = pyxdf.load_xdf(str(path), dejitter_timestamps=False, synchronize_clocks=False)
     out: dict[str, XdfStream] = {}
     for s in streams:
         info = s["info"]
