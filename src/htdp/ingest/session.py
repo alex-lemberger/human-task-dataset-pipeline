@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from htdp.ingest.frame import IDENTITY, Quat
+from htdp.ingest.frame import IDENTITY, Quat, apply_transform
 from htdp.ingest.mapping import IngestMap, parse_ingest_map
 from htdp.schemas.models import Consent, DeviceConfig, Session
 
@@ -64,3 +64,50 @@ def validate_sidecar(sidecar: dict[str, object]) -> ParsedSidecar:
         ingest_map=ingest_map,
         rotation=_rotation_from_sidecar(sidecar),
     )
+
+
+def compute_t0(motion_raw: dict[str, list[dict[str, object]]]) -> float:
+    all_ts = [float(r["raw_ts"]) for rows in motion_raw.values() for r in rows]  # type: ignore[arg-type]
+    if not all_ts:
+        raise ValueError("no motion samples found")
+    return min(all_ts)
+
+
+def build_motion_rows(
+    motion_raw: dict[str, list[dict[str, object]]],
+    rotation: Quat,
+    t0: float,
+) -> dict[str, list[dict[str, object]]]:
+    out: dict[str, list[dict[str, object]]] = {}
+    for tracker, rows in motion_raw.items():
+        built: list[dict[str, object]] = []
+        for r in rows:
+            pos = (
+                float(r["x_m"]),  # type: ignore[arg-type]
+                float(r["y_m"]),  # type: ignore[arg-type]
+                float(r["z_m"]),  # type: ignore[arg-type]
+            )
+            quat = (
+                float(r["qw"]),  # type: ignore[arg-type]
+                float(r["qx"]),  # type: ignore[arg-type]
+                float(r["qy"]),  # type: ignore[arg-type]
+                float(r["qz"]),  # type: ignore[arg-type]
+            )
+            (px, py, pz), (qw, qx, qy, qz) = apply_transform(rotation, pos, quat)
+            built.append(
+                {
+                    "timestamp_s": float(r["raw_ts"]) - t0,  # type: ignore[arg-type]
+                    "tracker_id": r["tracker_id"],
+                    "x_m": px,
+                    "y_m": py,
+                    "z_m": pz,
+                    "qw": qw,
+                    "qx": qx,
+                    "qy": qy,
+                    "qz": qz,
+                    "quality": float(r["quality"]),  # type: ignore[arg-type]
+                    "defect_tag": "",
+                }
+            )
+        out[tracker] = built
+    return out
