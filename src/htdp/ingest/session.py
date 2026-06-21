@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 
 from dataclasses import dataclass
 
@@ -111,3 +112,25 @@ def build_motion_rows(
             )
         out[tracker] = built
     return out
+
+
+def build_event_rows(
+    stamps: list[float],
+    payloads: list[str],
+    t0: float,
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for ts, payload in zip(stamps, payloads):
+        p = json.loads(payload)
+        rows.append(
+            {
+                "timestamp_s": float(ts) - t0,
+                "event_id": int(p["event_id"]),
+                "label": str(p["label"]),
+                "phase": str(p["phase"]),
+                "source": "real",
+                "confidence": float(p["confidence"]),
+                "notes": str(p["notes"]),
+            }
+        )
+    return rows
