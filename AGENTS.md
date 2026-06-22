@@ -63,7 +63,7 @@ Usage:
 - `htdp qc data/processed/<session_id>`
 - `htdp package --release <name> --profile <profile> <session_ids...>`
 - `htdp replay data/releases/<name>`
-- `htdp replay-ik <release_dir> [--max-steps N]` (drive a vendored 5-DOF arm's EEF along the release's wrist path via mink differential IK; requires `uv sync --extra replay` which includes mujoco, mink, and daqp)
+- `htdp replay-ik <release_dir> [--max-steps N] [--out PATH] [--force]` (drive a vendored 5-DOF arm's EEF along the release's wrist path via mink differential IK; `--out` writes per-step joint trajectory CSV (`timestamp_s, q0..qN, target_x/y/z, tracking_error_m`); `--force` overwrites; requires `uv sync --extra replay` which includes mujoco, mink, and daqp)
 - `htdp export-bids <raw_dir> <out_dir> [--force]` (**read-only export**; writes a separate BIDS tree, never mutates raw/processed/releases)
 - `htdp export-release-bids <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to multi-subject BIDS)
 - `htdp export-release-rosbag <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to one rosbag2 mcap bag per session; includes motion, events, and EEG (custom `EegSample` message) when present; requires the `rosbag` extra: `uv sync --extra rosbag`)
