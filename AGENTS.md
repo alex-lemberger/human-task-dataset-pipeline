@@ -70,6 +70,7 @@ Usage:
 - `htdp catalog <sessions_dir> <out.parquet>` — builds a
 one-row-per-session Parquet inventory of a raw sessions directory (read-only).
 - `htdp catalog-query <catalog.parquet> [--protocol P] [--qc Q] [--participant PID] [--processing-status S] [--modality M] [--start-after SECONDS] [--start-before SECONDS]`
+- `htdp catalog-releases <releases_dir> <out.parquet>` — builds a one-row-per-release Parquet inventory (release_name, profile, n_sessions, session_ids, absent_modalities, manifest_sha256) from a directory of packaged releases (read-only).
 
 ## Extending the project
 

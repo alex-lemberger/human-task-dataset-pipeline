@@ -47,6 +47,7 @@ htdp package    <id...> --release <name> --profile <profile>
 htdp replay     data/releases/<name>
 htdp replay-ik  data/releases/<name> [--max-steps N] [--out PATH] [--force] [--orientation-cost FLOAT]
 htdp catalog    <sessions_dir> <out.parquet>
+htdp catalog-releases <releases_dir> <out.parquet>
 ```
 
 ## IK robot-arm replay
@@ -70,6 +71,10 @@ regenerated at any time.
 (AND semantics; `--modality` is set membership on the comma-joined modalities) and supports inclusive range filters
 `--start-after SECONDS` / `--start-before SECONDS` (raw Unix seconds, AND-combined with other filters). Prints matching
 `session_id`s one per line for piping.
+
+`htdp catalog-releases <releases_dir> <out.parquet>` builds a deterministic 6-column Parquet inventory of packaged
+releases (release_name, profile, n_sessions, session_ids, absent_modalities, manifest_sha256) read from each release's
+manifest.json — no walk of the `data/` subdirectory. Rows are sorted by release_name; lists are comma-joined in sorted order.
 
 ## Design constraints (v0.1)
 
