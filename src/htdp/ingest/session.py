@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 
 from htdp.ingest.frame import IDENTITY, Quat, apply_transform
-from htdp.ingest.mapping import IngestMap, extract_motion, parse_ingest_map
+from htdp.ingest.mapping import IngestMap, extract_eeg, extract_motion, parse_ingest_map
 from htdp.ingest.reader import load_xdf_streams
 from htdp.schemas.models import (
     Consent,
@@ -224,6 +224,13 @@ def ingest_xdf(
     t0 = compute_t0(motion_raw)
     motion_out = build_motion_rows(motion_raw, parsed.rotation, t0)
 
+    eeg_raw: dict[str, tuple[list[str], list[dict[str, object]]]] = {}
+    for stream_name, em in parsed.ingest_map.eeg.items():
+        if stream_name not in streams:
+            raise KeyError(f"ingest_map eeg stream '{stream_name}' not found in XDF")
+        eeg_raw[em.eeg_id] = extract_eeg(streams[stream_name], em)
+    eeg_out = build_eeg_rows(eeg_raw, t0)
+
     ev = streams[parsed.ingest_map.events_stream]
     payloads = [s if isinstance(s, str) else "" for s in ev.time_series]
     event_rows = build_event_rows(ev.time_stamps, payloads, t0)
@@ -237,6 +244,7 @@ def ingest_xdf(
         motion_out=motion_out,
         event_rows=event_rows,
         source_xdf_name=xdf_path.name,
+        eeg_out=eeg_out,
         force=force,
     )
 
