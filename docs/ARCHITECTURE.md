@@ -46,6 +46,7 @@ htdp qc         data/processed/<id>
 htdp package    <id...> --release <name> --profile <profile>
 htdp replay     data/releases/<name>
 htdp replay-ik  data/releases/<name> [--max-steps N]
+htdp catalog    <sessions_dir> <out.parquet>
 ```
 
 ## IK robot-arm replay
@@ -53,6 +54,13 @@ htdp replay-ik  data/releases/<name> [--max-steps N]
 `htdp replay-ik` drives a vendored 5-DOF arm (`src/htdp/replay/assets/arm.xml`) so its
 end-effector follows the `right_wrist` Cartesian path of a release via `mink` differential
 IK; returns the joint trajectory + max tracking error; headless, deterministic; position-only.
+
+## Multi-session catalog
+
+`htdp catalog` scans a raw sessions directory into a deterministic 9-column Parquet index
+(session metadata + derived `modalities`); the inventory/query view; build-only (query via
+the Parquet file). The catalog is read-only, does not modify any session data, and can be
+regenerated at any time.
 
 ## Design constraints (v0.1)
 

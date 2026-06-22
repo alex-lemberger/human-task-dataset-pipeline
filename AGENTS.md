@@ -18,7 +18,7 @@ spine.
 
 ## Quality gate (run before every commit)
 `uv run ruff format --check . && uv run ruff check . && uv run pytest`
-Typecheck: `uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io src/htdp/ingest src/htdp/export`
+Typecheck: `uv run mypy src/htdp/schemas src/htdp/consent src/htdp/release src/htdp/io src/htdp/ingest src/htdp/export src/htdp/catalog.py`
 
 ## Reproducibility
 Same code + uv.lock + platform + seed + inputs → identical release-manifest checksum.
@@ -67,6 +67,8 @@ Usage:
 - `htdp export-bids <raw_dir> <out_dir> [--force]` (**read-only export**; writes a separate BIDS tree, never mutates raw/processed/releases)
 - `htdp export-release-bids <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to multi-subject BIDS)
 - `htdp export-release-rosbag <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to one rosbag2 mcap bag per session; includes motion, events, and EEG (custom `EegSample` message) when present; requires the `rosbag` extra: `uv sync --extra rosbag`)
+- `htdp catalog <sessions_dir> <out.parquet>` — builds a
+one-row-per-session Parquet inventory of a raw sessions directory (read-only).
 
 ## Extending the project
 
