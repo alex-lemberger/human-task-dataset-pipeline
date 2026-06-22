@@ -12,12 +12,11 @@ from htdp.export.eeg_bids import (
     vhdr_text,
     vmrk_text,
 )
-from htdp.export.labels import entity_stem, sanitize
+from htdp.export.labels import sanitize
 from htdp.export.sidecars import (
     PARTICIPANTS_HEADER,
     dataset_description,
     motion_json,
-    participants_rows,
     readme_text,
 )
 from htdp.export.tabular import (
@@ -34,7 +33,7 @@ from htdp.schemas.models import DeviceConfig, Session
 
 
 class BidsExportError(RuntimeError):
-    """Raised when a raw session cannot be exported to Motion-BIDS."""
+    """Raised when a session/release cannot be exported to BIDS."""
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -61,7 +60,7 @@ def _write_text(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
-def export_motion_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> Path:
+def _write_session_bids(out_dir: Path, raw_dir: Path, ses: str | None) -> dict[str, str]:
     session_path = raw_dir / "session.json"
     device_path = raw_dir / "device_config.json"
     if not session_path.exists() or not device_path.exists():
@@ -84,35 +83,29 @@ def export_motion_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> Pat
     sub = sanitize(session.participant_id)
     task = sanitize(session.protocol_id)
     tracksys = sanitize(device.device_config_id)
-    stem = entity_stem(sub, task, tracksys)
+    ent = f"sub-{sub}" + (f"_ses-{ses}" if ses else "")
+    subj_dir = out_dir / f"sub-{sub}"
+    if ses:
+        subj_dir = subj_dir / f"ses-{ses}"
 
-    m_header, m_matrix = motion_wide(rows, trackers)
-    motion_tsv = matrix_to_tsv(m_header, m_matrix)
-    channels_tsv = dicts_to_tsv(CHANNELS_HEADER, channels_rows(trackers, fps))
-    events_tsv = dicts_to_tsv(EVENTS_HEADER, events_rows(events))
-    participants_tsv = dicts_to_tsv(PARTICIPANTS_HEADER, participants_rows(sub, "n/a"))
-    desc = dataset_description(session.session_id)
-    sidecar = motion_json(task, tracksys, trackers, fps)
-    readme = readme_text(session.session_id)
-
-    if out_dir.exists():
-        if not force:
-            raise BidsExportError(f"output already exists: {out_dir} (use force=True)")
-        shutil.rmtree(out_dir)
-    motion_dir = out_dir / f"sub-{sub}" / "motion"
+    motion_dir = subj_dir / "motion"
     motion_dir.mkdir(parents=True)
-
-    dump_json(desc, out_dir / "dataset_description.json")
-    _write_text(out_dir / "README", readme)
-    _write_text(out_dir / "participants.tsv", participants_tsv)
-    _write_text(motion_dir / f"{stem}_motion.tsv", motion_tsv)
-    dump_json(sidecar, motion_dir / f"{stem}_motion.json")
-    _write_text(motion_dir / f"{stem}_channels.tsv", channels_tsv)
-    _write_text(motion_dir / f"sub-{sub}_task-{task}_events.tsv", events_tsv)
+    m_stem = f"{ent}_task-{task}_tracksys-{tracksys}"
+    m_header, m_matrix = motion_wide(rows, trackers)
+    _write_text(motion_dir / f"{m_stem}_motion.tsv", matrix_to_tsv(m_header, m_matrix))
+    dump_json(motion_json(task, tracksys, trackers, fps), motion_dir / f"{m_stem}_motion.json")
+    _write_text(
+        motion_dir / f"{m_stem}_channels.tsv",
+        dicts_to_tsv(CHANNELS_HEADER, channels_rows(trackers, fps)),
+    )
+    _write_text(
+        motion_dir / f"{ent}_task-{task}_events.tsv",
+        dicts_to_tsv(EVENTS_HEADER, events_rows(events)),
+    )
 
     eeg_streams = [s for s in device.streams if s.role == "eeg"]
     if eeg_streams:
-        eeg_dir = out_dir / f"sub-{sub}" / "eeg"
+        eeg_dir = subj_dir / "eeg"
         eeg_dir.mkdir(parents=True)
         for s in eeg_streams:
             labels, timestamps, samples = _read_eeg_csv(raw_dir / s.path)
@@ -121,7 +114,7 @@ def export_motion_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> Pat
             except ValueError as exc:
                 raise BidsExportError(f"eeg stream '{s.name}': {exc}") from exc
             acq = sanitize(s.name)
-            eeg_stem = f"sub-{sub}_task-{task}_acq-{acq}"
+            eeg_stem = f"{ent}_task-{task}_acq-{acq}"
             _write_text(eeg_dir / f"{eeg_stem}_eeg.vhdr", vhdr_text(eeg_stem, labels, fs))
             _write_text(eeg_dir / f"{eeg_stem}_eeg.vmrk", vmrk_text(eeg_stem))
             (eeg_dir / f"{eeg_stem}_eeg.eeg").write_bytes(eeg_binary(samples))
@@ -130,4 +123,24 @@ def export_motion_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> Pat
                 eeg_dir / f"{eeg_stem}_channels.tsv",
                 dicts_to_tsv(EEG_CHANNELS_HEADER, eeg_channels_rows(labels)),
             )
+
+    return {"participant_id": f"sub-{sub}", "cohort": "n/a"}
+
+
+def export_motion_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> Path:
+    session_path = raw_dir / "session.json"
+    if not session_path.exists() or not (raw_dir / "device_config.json").exists():
+        raise BidsExportError(f"raw session missing metadata: {raw_dir}")
+    session = Session.model_validate_json(session_path.read_text(encoding="utf-8"))
+
+    if out_dir.exists():
+        if not force:
+            raise BidsExportError(f"output already exists: {out_dir} (use force=True)")
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True)
+
+    row = _write_session_bids(out_dir, raw_dir, ses=None)
+    dump_json(dataset_description(session.session_id), out_dir / "dataset_description.json")
+    _write_text(out_dir / "README", readme_text(session.session_id))
+    _write_text(out_dir / "participants.tsv", dicts_to_tsv(PARTICIPANTS_HEADER, [row]))
     return out_dir
