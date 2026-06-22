@@ -14,3 +14,34 @@ def estimate_fs(timestamps: list[float]) -> float:
 
 def eeg_binary(samples: list[list[float]]) -> bytes:
     return b"".join(struct.pack("<f", v) for row in samples for v in row)
+
+
+def vhdr_text(stem: str, labels: list[str], fs: float) -> str:
+    interval = 1_000_000.0 / fs
+    channel_lines = "\n".join(f"Ch{i}={label},,1,µV" for i, label in enumerate(labels, start=1))
+    return (
+        "Brain Vision Data Exchange Header File Version 1.0\n\n"
+        "[Common Infos]\n"
+        "Codepage=UTF-8\n"
+        f"DataFile={stem}_eeg.eeg\n"
+        f"MarkerFile={stem}_eeg.vmrk\n"
+        "DataFormat=BINARY\n"
+        "DataOrientation=MULTIPLEXED\n"
+        f"NumberOfChannels={len(labels)}\n"
+        f"SamplingInterval={interval}\n\n"
+        "[Binary Infos]\n"
+        "BinaryFormat=IEEE_FLOAT_32\n\n"
+        "[Channel Infos]\n"
+        f"{channel_lines}\n"
+    )
+
+
+def vmrk_text(stem: str) -> str:
+    return (
+        "Brain Vision Data Exchange Marker File, Version 1.0\n\n"
+        "[Common Infos]\n"
+        "Codepage=UTF-8\n"
+        f"DataFile={stem}_eeg.eeg\n\n"
+        "[Marker Infos]\n"
+        "Mk1=New Segment,,1,1,0\n"
+    )
