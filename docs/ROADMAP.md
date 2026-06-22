@@ -32,7 +32,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - EEG capture — **in progress (XDF eeg ingest landed; EEG-BIDS export landed)**
 - ROS 2 / rosbag2 export — **done** (motion + events + EEG via `htdp export-release-rosbag`)
 - Motion-BIDS export — **done** (single-session + multi-subject release-level export)
-- Consent *filtering* — strip disallowed modalities from a release while still including the session — **in progress (modality filtering landed)**
+- Consent *filtering* — strip disallowed modalities from a release while still including the session — **done (per-session granularity landed; modality files dropped only from sessions whose consent forbids them)**
 - Multi-session queryable catalog — **done** (`htdp catalog` + `htdp catalog-query` with range filters landed; release-level inventory via `htdp catalog-releases` landed)
 - Agent-orchestration layer (Hermes / OpenClaw)
 - Remote / multi-user access

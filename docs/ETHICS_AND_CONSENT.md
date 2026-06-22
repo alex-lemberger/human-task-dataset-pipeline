@@ -53,13 +53,12 @@ Permission flags (`commercial_use`, `model_training`, `third_party_access`,
 `public_release`) **block** — a session whose consent lacks a required permission
 flag is excluded from the release entirely, and nothing is written.
 
-Modality flags (`distribute_raw_video`, `distribute_raw_eeg`) **filter** — the
-session remains included but disallowed modality files are omitted from the staged
-release and listed in `manifest.absent_modalities`. Motion data is never filtered.
-
-Consent filtering uses a **release-level union**: if any session in a release forbids
-a modality, that modality is dropped for the whole release. This ensures no single
-participant's disallowed data leaks into a shared release.
+Modality flags (`distribute_raw_video`, `distribute_raw_eeg`) **filter per-session** —
+a session remains included but its disallowed modality files are omitted from the
+staged release and recorded in `manifest.absent_modalities_by_session`. The
+release-wide `absent_modalities` lists only modalities absent from **every** session
+(intersection), so a modality kept by at least one session is not listed as globally
+absent. Motion data is never filtered.
 
 ---
 
