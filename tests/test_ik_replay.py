@@ -98,3 +98,22 @@ def test_cli_replay_ik_out_refuses_overwrite(tmp_path: Path):
     )
     assert forced.exit_code == 0, forced.output
     assert "OLD" not in out.read_text(encoding="utf-8")
+
+
+def test_orientation_recorded_at_zero_cost(tmp_path: Path):
+    rel = _release(tmp_path)
+    res = replay_release_ik(rel, max_steps=10)
+    assert len(res.target_orientations) == 10
+    assert len(res.orientation_errors) == 10
+    assert all(len(q) == 4 for q in res.target_orientations)
+    res0 = replay_release_ik(rel, max_steps=10, orientation_cost=0.0)
+    assert res.joint_trajectory == res0.joint_trajectory
+
+
+def test_orientation_cost_runs_and_is_deterministic(tmp_path: Path):
+    rel = _release(tmp_path)
+    a = replay_release_ik(rel, max_steps=10, orientation_cost=1.0)
+    b = replay_release_ik(rel, max_steps=10, orientation_cost=1.0)
+    assert isinstance(a.max_orientation_error, float)
+    assert a.max_orientation_error >= 0.0
+    assert a.joint_trajectory == b.joint_trajectory
