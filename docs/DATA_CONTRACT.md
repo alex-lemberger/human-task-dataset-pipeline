@@ -204,3 +204,27 @@ and writes a minimal Motion-BIDS (BEP029) dataset tree. Key characteristics:
 - BIDS version: **1.10.0**.
 - Labels (`participant_id`, `protocol_id`, `device_config_id`) are sanitized to
   alphanumerics for BIDS entity compliance.
+
+---
+
+## EEG-BIDS export
+
+The `htdp export-bids` command can also export EEG data from raw sessions that contain
+`role="eeg"` streams. EEG is exported as BrainVision format (`.vhdr` header, `.vmrk`
+markers, `.eeg` binary multiplexed IEEE float32) under `sub-<subject>/eeg/`, alongside
+the `sub-<subject>/motion/` directory. Each EEG stream produces:
+
+- `<stem>_eeg.vhdr` — BrainVision header with channel info (resolution 1, unit µV).
+- `<stem>_eeg.vmrk` — Marker file with a single `New Segment` marker.
+- `<stem>_eeg.eeg` — Binary data (multiplexed little-endian IEEE float32).
+- `<stem>_channels.tsv` — Per-channel metadata (type `EEG`, units µV).
+- `<stem>_eeg.json` — BIDS EEG sidecar with sampling frequency and channel count.
+
+The export assumes a **regular grid**: the `timestamp_s` column from the raw CSV is
+dropped and `SamplingFrequency` is estimated from the timestamps as `(n-1)/span`. The
+reference, power-line frequency, and software filters are recorded as `n/a` in the
+sidecar.
+
+The `acq` entity in the BIDS filename is derived from the EEG stream's `name` field via
+the same sanitization applied to other BIDS entities. Motion-only sessions export no
+`eeg/` directory (regression-safe).
