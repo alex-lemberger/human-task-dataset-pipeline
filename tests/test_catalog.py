@@ -224,3 +224,87 @@ def test_cli_catalog_query_range(tmp_path: Path):
     before = runner.invoke(app, ["catalog-query", str(cat), "--start-before", "150"])
     assert before.exit_code == 0, before.output
     assert before.output.split() == ["session-a"]
+
+
+def _two_releases(tmp_path: Path) -> Path:
+    from htdp.release.package import package_release
+    from htdp.schemas.enums import ReleaseProfile
+
+    generate_session(tmp_path / "raw", seed=1)
+    generate_session(tmp_path / "raw", seed=2)
+    releases = tmp_path / "releases"
+    package_release(
+        ["synth-0001"], "relA", ReleaseProfile.COMMERCIAL_DATASET, tmp_path / "raw", releases
+    )
+    package_release(
+        ["synth-0001", "synth-0002"],
+        "relB",
+        ReleaseProfile.COMMERCIAL_DATASET,
+        tmp_path / "raw",
+        releases,
+    )
+    return releases
+
+
+def test_scan_releases_rows(tmp_path: Path):
+    from htdp.catalog import scan_releases
+
+    rows = scan_releases(_two_releases(tmp_path))
+    assert [r["release_name"] for r in rows] == ["relA", "relB"]  # sorted
+    by_name = {r["release_name"]: r for r in rows}
+    assert by_name["relA"]["profile"] == "commercial_dataset"
+    assert by_name["relA"]["n_sessions"] == 1
+    assert by_name["relA"]["session_ids"] == "synth-0001"
+    assert by_name["relA"]["absent_modalities"] == "eeg,video"
+    assert by_name["relB"]["n_sessions"] == 2
+    assert by_name["relB"]["session_ids"] == "synth-0001,synth-0002"
+
+
+def test_build_release_catalog(tmp_path: Path):
+    import json
+
+    from htdp.catalog import _RELEASE_COLUMNS, build_release_catalog
+
+    releases = _two_releases(tmp_path)
+    out = build_release_catalog(releases, tmp_path / "rel.parquet")
+    df = pl.read_parquet(out)
+    assert df.columns == _RELEASE_COLUMNS
+    assert df.height == 2
+    sha = json.loads((releases / "relA" / "manifest.json").read_text(encoding="utf-8"))[
+        "manifest_sha256"
+    ]
+    got = df.filter(pl.col("release_name") == "relA")["manifest_sha256"].to_list()[0]
+    assert got == sha
+
+
+def test_build_release_catalog_deterministic(tmp_path: Path):
+    from htdp.catalog import build_release_catalog
+
+    releases = _two_releases(tmp_path)
+    a = build_release_catalog(releases, tmp_path / "a.parquet")
+    b = build_release_catalog(releases, tmp_path / "b.parquet")
+    assert a.read_bytes() == b.read_bytes()
+
+
+def test_scan_releases_missing_dir_raises(tmp_path: Path):
+    from htdp.catalog import CatalogError, scan_releases
+
+    with pytest.raises(CatalogError):
+        scan_releases(tmp_path / "nope")
+
+
+def test_scan_releases_empty_dir_raises(tmp_path: Path):
+    from htdp.catalog import CatalogError, scan_releases
+
+    (tmp_path / "empty").mkdir()
+    with pytest.raises(CatalogError):
+        scan_releases(tmp_path / "empty")
+
+
+def test_scan_releases_skips_non_release_subdir(tmp_path: Path):
+    from htdp.catalog import CatalogError, scan_releases
+
+    root = tmp_path / "releases"
+    (root / "not-a-release").mkdir(parents=True)  # no manifest.json
+    with pytest.raises(CatalogError):  # no release subdirs at all
+        scan_releases(root)

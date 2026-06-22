@@ -5,7 +5,7 @@ from pathlib import Path
 import polars as pl
 from pydantic import ValidationError
 
-from htdp.schemas.models import DeviceConfig, Session
+from htdp.schemas.models import DatasetRelease, DeviceConfig, Session
 
 
 class CatalogError(RuntimeError):
@@ -22,6 +22,15 @@ _COLUMNS = [
     "processing_status",
     "start_time_s",
     "modalities",
+]
+
+_RELEASE_COLUMNS = [
+    "release_name",
+    "profile",
+    "n_sessions",
+    "session_ids",
+    "absent_modalities",
+    "manifest_sha256",
 ]
 
 
@@ -67,6 +76,45 @@ def build_catalog(sessions_dir: Path, out_path: Path) -> Path:
     """Build a Parquet catalog from the given sessions directory and write to out_path."""
     rows = scan_sessions(sessions_dir)
     df = pl.DataFrame(rows).select(_COLUMNS)
+    df.write_parquet(out_path)
+    return out_path
+
+
+def scan_releases(releases_dir: Path) -> list[dict[str, str | int]]:
+    """Scan a directory of packaged releases and return one row dict per release."""
+    if not releases_dir.is_dir():
+        raise CatalogError(f"not a directory: {releases_dir}")
+    release_dirs = sorted(
+        p for p in releases_dir.iterdir() if p.is_dir() and (p / "manifest.json").exists()
+    )
+    if not release_dirs:
+        raise CatalogError(f"no releases found in {releases_dir}")
+
+    rows: list[dict[str, str | int]] = []
+    for rd in release_dirs:
+        try:
+            release = DatasetRelease.model_validate_json(
+                (rd / "manifest.json").read_text(encoding="utf-8")
+            )
+        except ValidationError as exc:
+            raise CatalogError(f"invalid release manifest in {rd}: {exc}") from exc
+        rows.append(
+            {
+                "release_name": release.release_name,
+                "profile": release.profile,
+                "n_sessions": len(release.session_ids),
+                "session_ids": ",".join(sorted(release.session_ids)),
+                "absent_modalities": ",".join(sorted(release.absent_modalities)),
+                "manifest_sha256": release.manifest_sha256,
+            }
+        )
+    return sorted(rows, key=lambda r: r["release_name"])
+
+
+def build_release_catalog(releases_dir: Path, out_path: Path) -> Path:
+    """Build a Parquet release inventory from the given releases directory."""
+    rows = scan_releases(releases_dir)
+    df = pl.DataFrame(rows).select(_RELEASE_COLUMNS)
     df.write_parquet(out_path)
     return out_path
 
