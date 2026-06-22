@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from htdp.consent.modalities import MODALITY_GLOBS, resolve_absent
+from htdp.consent.modalities import MODALITY_GLOBS, resolve_absent_per_session
 from htdp.consent.profiles import check_consent
 from htdp.io.canonical import dump_json, write_csv
 from htdp.io.checksums import sha256_bytes, sha256_file, write_checksums
@@ -14,15 +14,16 @@ from htdp.schemas.enums import ReleaseProfile
 from htdp.schemas.models import Consent, DatasetRelease, Session
 
 
-def _present_modalities(session_ids: list[str], raw_root: Path) -> set[str]:
-    present: set[str] = set()
-    for modality, globs in MODALITY_GLOBS.items():
-        for sid in session_ids:
-            session_dir = raw_root / sid
+def _present_by_session(session_ids: list[str], raw_root: Path) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {}
+    for sid in session_ids:
+        session_dir = raw_root / sid
+        present: set[str] = set()
+        for modality, globs in MODALITY_GLOBS.items():
             if any(p.is_file() for pattern in globs for p in session_dir.glob(pattern)):
                 present.add(modality)
-                break
-    return present
+        out[sid] = present
+    return out
 
 
 class ConsentError(RuntimeError):
@@ -53,7 +54,7 @@ def package_release(
         raise FileExistsError(f"release already exists: {final}")
 
     # Consent gate FIRST — fail before any output.
-    consents: list[Consent] = []
+    consents: dict[str, Consent] = {}
     for sid in session_ids:
         consent = Consent.model_validate_json(
             (raw_root / sid / "consent.json").read_text(encoding="utf-8")
@@ -61,12 +62,11 @@ def package_release(
         missing = check_consent(consent, profile)
         if missing:
             raise ConsentError(f"{sid}: profile {profile.value} requires {missing}")
-        consents.append(consent)
+        consents[sid] = consent
 
-    # Modality filtering: a modality is absent if any session forbids it (consent)
-    # or it is not present on disk. drop_globs lists files to omit from staging.
-    present = _present_modalities(session_ids, raw_root)
-    absent, drop_globs = resolve_absent(consents, present)
+    # Modality filtering: per-session absent + drop globs.
+    present = _present_by_session(session_ids, raw_root)
+    absent_by_session, drop_globs_by_session = resolve_absent_per_session(consents, present)
 
     releases_root.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{release_name}.", dir=releases_root))
@@ -77,7 +77,7 @@ def package_release(
         for sid in session_ids:
             dest = data_dir / sid
             shutil.copytree(raw_root / sid, dest)
-            for pattern in drop_globs:
+            for pattern in drop_globs_by_session[sid]:
                 for p in sorted(dest.glob(pattern)):
                     if p.is_file():
                         p.unlink()
@@ -116,11 +116,17 @@ def package_release(
         )
 
         manifest_sha = _manifest_sha(data_dir)
+        absent = sorted(
+            set.intersection(*(set(v) for v in absent_by_session.values()))
+            if absent_by_session
+            else set()
+        )
         release = DatasetRelease(
             release_name=release_name,
             profile=profile.value,
             session_ids=session_ids,
-            absent_modalities=sorted(absent),
+            absent_modalities=absent,
+            absent_modalities_by_session=absent_by_session,
             manifest_sha256=manifest_sha,
         )
         dump_json(release, staging / "manifest.json")
