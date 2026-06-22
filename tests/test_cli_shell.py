@@ -130,3 +130,35 @@ def test_export_release_bids_happy_and_missing(tmp_path):
     bad = runner.invoke(app, ["export-release-bids", str(tmp_path / "nope"), str(tmp_path / "b2")])
     assert bad.exit_code == 1
     assert "error:" in bad.output
+
+
+def test_export_release_rosbag_happy_and_missing(tmp_path):
+    import pytest
+
+    pytest.importorskip("rosbags")
+
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+    from htdp.release.package import package_release
+    from htdp.schemas.enums import ReleaseProfile
+    from htdp.synth.generate import generate_session
+
+    generate_session(tmp_path / "raw", seed=1)
+    rel = package_release(
+        ["synth-0001"],
+        "rel",
+        ReleaseProfile.COMMERCIAL_DATASET,
+        tmp_path / "raw",
+        tmp_path / "releases",
+    )
+    runner = CliRunner()
+    ok = runner.invoke(app, ["export-release-rosbag", str(rel), str(tmp_path / "bags")])
+    assert ok.exit_code == 0, ok.output
+    assert (tmp_path / "bags" / "synth0001" / "metadata.yaml").exists()
+
+    bad = runner.invoke(
+        app, ["export-release-rosbag", str(tmp_path / "nope"), str(tmp_path / "b2")]
+    )
+    assert bad.exit_code == 1
+    assert "error:" in bad.output

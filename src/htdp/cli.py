@@ -87,6 +87,19 @@ def export_release_bids(release_dir: Path, out_dir: Path, force: bool = False) -
 
 
 @app.command()
+def export_release_rosbag(release_dir: Path, out_dir: Path, force: bool = False) -> None:
+    """Export a packaged release to one rosbag2 (mcap) bag per session."""
+    from htdp.export.rosbag import RosbagExportError, export_release_rosbag as _export
+
+    try:
+        d = _export(release_dir, out_dir, force=force)
+    except RosbagExportError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"wrote {d}")
+
+
+@app.command()
 def validate(raw_dir: Path) -> None:
     """Validate a raw session folder."""
     from htdp.validate import validate_session
