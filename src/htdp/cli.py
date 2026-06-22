@@ -200,3 +200,31 @@ def catalog(sessions_dir: Path, out_path: Path) -> None:
         raise typer.Exit(1) from exc
     n = pl.read_parquet(out).height
     typer.echo(f"wrote {out} ({n} sessions)")
+
+
+@app.command()
+def catalog_query(
+    catalog_path: Path,
+    protocol: str | None = typer.Option(None, "--protocol"),
+    qc: str | None = typer.Option(None, "--qc"),
+    participant: str | None = typer.Option(None, "--participant"),
+    processing_status: str | None = typer.Option(None, "--processing-status"),
+    modality: str | None = typer.Option(None, "--modality"),
+) -> None:
+    """Print session_ids from a catalog matching the given filters (AND)."""
+    from htdp.catalog import CatalogError, query_catalog
+
+    try:
+        ids = query_catalog(
+            catalog_path,
+            protocol=protocol,
+            qc_status=qc,
+            participant=participant,
+            processing_status=processing_status,
+            modality=modality,
+        )
+    except CatalogError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for session_id in ids:
+        typer.echo(session_id)

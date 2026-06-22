@@ -33,7 +33,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - ROS 2 / rosbag2 export — **done** (motion + events + EEG via `htdp export-release-rosbag`)
 - Motion-BIDS export — **done** (single-session + multi-subject release-level export)
 - Consent *filtering* — strip disallowed modalities from a release while still including the session — **in progress (modality filtering landed)**
-- Multi-session queryable catalog — **done** (`htdp catalog` landed)
+- Multi-session queryable catalog — **done** (`htdp catalog` + `htdp catalog-query` landed)
 - Agent-orchestration layer (Hermes / OpenClaw)
 - Remote / multi-user access
 

@@ -62,6 +62,10 @@ IK; returns the joint trajectory + max tracking error; headless, deterministic; 
 the Parquet file). The catalog is read-only, does not modify any session data, and can be
 regenerated at any time.
 
+`htdp catalog-query <catalog.parquet>` filters the catalog by `--protocol/--qc/--participant/--processing-status/--modality`
+(AND semantics; `--modality` is set membership on the comma-joined modalities) and prints
+matching `session_id`s one per line for piping.
+
 ## Design constraints (v0.1)
 
 - **No servers** — Postgres, MinIO, FastAPI, Docker are all deferred to v0.2.

@@ -119,3 +119,21 @@ def test_query_missing_catalog_raises(tmp_path: Path):
 
     with pytest.raises(CatalogError):
         query_catalog(tmp_path / "nope.parquet")
+
+
+def test_cli_catalog_query(tmp_path: Path):
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+
+    generate_session(tmp_path / "raw", seed=1)
+    generate_session(tmp_path / "raw", seed=2)
+    build_catalog(tmp_path / "raw", tmp_path / "c.parquet")
+    runner = CliRunner()
+    ok = runner.invoke(app, ["catalog-query", str(tmp_path / "c.parquet"), "--modality", "motion"])
+    assert ok.exit_code == 0, ok.output
+    assert ok.output.split() == ["synth-0001", "synth-0002"]
+
+    bad = runner.invoke(app, ["catalog-query", str(tmp_path / "missing.parquet")])
+    assert bad.exit_code == 1
+    assert "error:" in bad.output
