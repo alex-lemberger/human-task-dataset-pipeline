@@ -45,7 +45,7 @@ htdp process    data/raw/<id>
 htdp qc         data/processed/<id>
 htdp package    <id...> --release <name> --profile <profile>
 htdp replay     data/releases/<name>
-htdp replay-ik  data/releases/<name> [--max-steps N] [--out PATH] [--force]
+htdp replay-ik  data/releases/<name> [--max-steps N] [--out PATH] [--force] [--orientation-cost FLOAT]
 htdp catalog    <sessions_dir> <out.parquet>
 ```
 
@@ -53,8 +53,10 @@ htdp catalog    <sessions_dir> <out.parquet>
 
 `htdp replay-ik` drives a vendored 5-DOF arm (`src/htdp/replay/assets/arm.xml`) so its
 end-effector follows the `right_wrist` Cartesian path of a release via `mink` differential
-IK; returns the joint trajectory + max tracking error; headless, deterministic; position-only.
-With `--out PATH`, writes a per-step joint trajectory CSV (`timestamp_s, q0..qN, target_x/y/z, tracking_error_m`);
+IK; returns the joint trajectory + max tracking error; headless, deterministic. Default
+`--orientation-cost 0.0` is position-only; values > 0 weight best-effort wrist-orientation
+tracking on the 5-DOF arm. The summary prints max orientation error in radians.
+With `--out PATH`, writes a per-step joint trajectory CSV (`timestamp_s, q0..qN, target_x/y/z, tracking_error_m, target_qw/qx/qy/qz, orientation_error_rad`);
 `--force` overwrites an existing file.
 
 ## Multi-session catalog
