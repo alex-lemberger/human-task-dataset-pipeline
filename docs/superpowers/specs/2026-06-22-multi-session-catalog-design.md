@@ -23,17 +23,21 @@ ingest as the factory-floor catalog; releases are curated subsets and are out of
 ## Background (verified)
 
 A raw session folder contains `session.json` and `device_config.json`. Field locations
-(verified against `src/htdp/schemas/models.py`):
+(verified against `src/htdp/schemas/models.py` and the actual written JSON):
 
 - **`session.json`** (`Session` model): `session_id`, `participant_id`, `protocol_id`,
   `consent_form_version`, `device_config_id`, `start_time_s` (float), `qc_status`
   (enum, default `pass`), `processing_status` (enum, default `raw`).
-- **`device_config.json`** (`DeviceConfig` model): `source` (str, default `"synthetic"`),
-  and `streams` — each with a `role` (`motion` / `eeg` / `video` / `events`).
+- **`device_config.json`** (`DeviceConfig` model): `device_config_id`, `frame`, and
+  `streams` — each with a `role` (`motion` / `eeg` / `video` / `events`).
 
-`source` lives on `DeviceConfig`, NOT `Session`, so a catalog row must read both files.
-`polars` is already a core dependency (used by `replay`/`processing`); no new dependency.
-`validate.py` already parses these files via the `Session` / `DeviceConfig` pydantic models.
+There is **no session-level `source`/provenance field**: `source` exists only as a
+per-row field inside the events-stream CSV (`"synthetic"` / `"real"`), which is marker
+provenance, not session provenance. The catalog therefore does NOT include a `source`
+column — `device_config_id` (e.g. `"vive-synth"`) already proxies provenance, and
+fabricating a session `source` from marker rows would be misleading. `polars` is already a
+core dependency (used by `replay`/`processing`); no new dependency. `validate.py` already
+parses these files via the `Session` / `DeviceConfig` pydantic models.
 
 ## Architecture
 
@@ -70,16 +74,16 @@ Stable column order:
 | `session_id` | session.json | sort key |
 | `participant_id` | session.json | |
 | `protocol_id` | session.json | |
-| `device_config_id` | session.json | |
-| `source` | device_config.json | e.g. `"synthetic"`, `"real"` |
+| `device_config_id` | session.json | also proxies provenance (e.g. `vive-synth`) |
 | `consent_form_version` | session.json | |
 | `qc_status` | session.json | enum value as string (e.g. `"pass"`) |
 | `processing_status` | session.json | enum value as string (e.g. `"raw"`) |
 | `start_time_s` | session.json | float |
 | `modalities` | device_config.json | comma-joined **sorted unique** stream roles, e.g. `"events,motion"` |
 
-Enum fields are written as their string values. `modalities` for the synth session is
-`"events,motion"` (roles `{motion, events}` sorted).
+Nine columns. Enum fields are written as their string values (`qc_status.value`,
+`processing_status.value`). `modalities` for the synth session is `"events,motion"`
+(roles `{motion, events}` sorted).
 
 ## CLI
 
@@ -108,8 +112,8 @@ New `tests/test_catalog.py` (no optional-dep gate — polars + synth are in the 
 
 - **Build:** a synth dir with two sessions (`generate_session` seed 1 & 2) →
   `build_catalog` writes Parquet; read back via `polars.read_parquet`: 2 rows, exact
-  column list/order, `source == "synthetic"`, `modalities == "events,motion"`, rows
-  sorted by `session_id`, `qc_status == "pass"`.
+  column list/order (9 columns), `modalities == "events,motion"`, rows sorted by
+  `session_id`, `qc_status == "pass"`.
 - **Determinism:** two builds of the same dir produce byte-identical Parquet files
   (Parquet write is deterministic for identical input/schema).
 - **Missing dir** → `CatalogError`.
@@ -145,9 +149,9 @@ Parquet. Tests assert byte-identical rebuilds.
 
 - **Placeholders:** none — every column, its source file, the error conditions, and the
   synth expected values (`source="synthetic"`, `modalities="events,motion"`) are concrete.
-- **Consistency:** `source` correctly sourced from `device_config.json` (not `Session`);
-  parsing reuses the same pydantic models as `validate.py`; column order is fixed once and
-  referenced by the test.
+- **Consistency:** no `source` column (no session-level source field exists — verified);
+  `device_config.json` is still read for `modalities`; parsing reuses the same pydantic
+  models as `validate.py`; column order (9) is fixed once and referenced by the test.
 - **Scope:** single implementation plan — one module, one CLI command, one test file, docs.
   Build-only; raw-dir only; no query DSL.
 - **Ambiguity:** `modalities` defined as comma-joined sorted unique roles; enums written as
