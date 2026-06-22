@@ -83,22 +83,23 @@ htdp catalog-query <catalog_path> [...existing filters...]
 
 Append to `tests/test_catalog.py` (no optional-dep gate — polars + synth are base env).
 
-Build a catalog from two synth sessions with **distinct** `start_time_s`. Read the two
-written `start_time_s` values back from the built Parquet (do not hardcode), let `lo` =
-smaller, `hi` = larger, `mid` = midpoint. Assert `lo < mid < hi` so the cases below are
-meaningful; then:
+**Why not synth:** the synth generator hardcodes `start_time_s=0.0`
+(`src/htdp/synth/generate.py:155`), so two synth sessions share the same time — useless for
+range tests. `query_catalog` only *reads* the Parquet, so build a controlled 2-row catalog
+Parquet directly via `pl.DataFrame` (all 9 catalog columns, distinct `start_time_s` values
+e.g. `100.0` and `200.0`) and query it. This isolates the range logic and stays deterministic.
 
-- `start_after=mid` → only the later session id.
-- `start_before=mid` → only the earlier session id.
-- `start_after=lo, start_before=hi` → both ids.
+A small test helper writes such a Parquet. With `lo=100.0`, `hi=200.0`, `mid=150.0` and ids
+`session-a` (lo) / `session-b` (hi):
+
+- `start_after=mid` → `["session-b"]` (only the later session).
+- `start_before=mid` → `["session-a"]` (only the earlier session).
+- `start_after=lo, start_before=hi` → both (inclusive bounds keep both endpoints).
+- Inclusive boundary: `start_after=hi` → `["session-b"]` (>= includes the exact value).
 - Inverted range `start_after=hi, start_before=lo` → `[]`.
-- Range AND an existing filter (`start_after=lo, protocol="reach-grasp-place"`) → both.
-- **CLI:** `catalog-query <parquet> --start-after <mid>` exit 0, output = later id only;
-  `--start-before <mid>` → earlier id only.
-
-If both synth sessions happen to share an identical `start_time_s`, the test must adjust
-(e.g. assert the boundary behavior on equality directly) rather than silently pass — verify
-the read-back values differ first.
+- Range AND an existing filter (`start_after=lo, protocol="p"`) → both (both rows protocol `p`).
+- **CLI:** `catalog-query <parquet> --start-after 150` exit 0, output = `session-b` only;
+  `--start-before 150` → `session-a` only.
 
 ## Determinism
 
