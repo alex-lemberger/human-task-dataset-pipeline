@@ -62,7 +62,7 @@ def ingest_video(
 
 @app.command()
 def export_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> None:
-    """Export a raw session to a minimal Motion-BIDS dataset tree."""
+    """Export a raw session to a BIDS dataset tree (Motion-BIDS + BrainVision EEG-BIDS)."""
     from htdp.export.bids import BidsExportError, export_motion_bids
 
     try:
