@@ -65,7 +65,11 @@ def _stream_footer(stream_id: int, stamps: list[float]) -> bytes:
     return _chunk(6, struct.pack("<I", stream_id) + xml.encode("utf-8"))
 
 
-def write_xdf(raw_dir: Path, xdf_path: Path) -> None:
+def write_xdf(
+    raw_dir: Path,
+    xdf_path: Path,
+    eeg: tuple[str, list[str], list[float], list[list[float]]] | None = None,
+) -> None:
     blob = b"XDF:"
     blob += _chunk(1, b'<?xml version="1.0"?><info><version>1.0</version></info>')
 
@@ -98,10 +102,20 @@ def write_xdf(raw_dir: Path, xdf_path: Path) -> None:
     blob += _samples_string(stream_id, ev_stamps, ev_payloads)
     blob += _stream_footer(stream_id, ev_stamps)
 
+    if eeg is not None:
+        eeg_id, labels, eeg_stamps, eeg_samples = eeg
+        stamps = [t + CLOCK_BASE for t in eeg_stamps]
+        blob += _stream_header(stream_id + 1, eeg_id, "double64", len(labels), 0.0)
+        blob += _samples_numeric(stream_id + 1, stamps, eeg_samples)
+        blob += _stream_footer(stream_id + 1, stamps)
+
     xdf_path.write_bytes(blob)
 
 
-def build_sidecar(raw_dir: Path) -> dict[str, object]:
+def build_sidecar(
+    raw_dir: Path,
+    eeg: tuple[str, list[str]] | None = None,
+) -> dict[str, object]:
     session = json.loads((raw_dir / "session.json").read_text(encoding="utf-8"))
     consent = json.loads((raw_dir / "consent.json").read_text(encoding="utf-8"))
     device_config = json.loads((raw_dir / "device_config.json").read_text(encoding="utf-8"))
@@ -110,6 +124,15 @@ def build_sidecar(raw_dir: Path) -> dict[str, object]:
         t: {"role": "motion", "tracker_id": t, "channels": dict(channels)} for t in _TRACKERS
     }
     ingest_map["events"] = {"role": "events"}
+
+    if eeg is not None:
+        eeg_id, labels = eeg
+        ingest_map[eeg_id] = {
+            "role": "eeg",
+            "eeg_id": eeg_id,
+            "channels": {label: i for i, label in enumerate(labels)},
+        }
+
     return {
         "session": session,
         "consent": consent,
