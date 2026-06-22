@@ -79,6 +79,8 @@ def query_catalog(
     participant: str | None = None,
     processing_status: str | None = None,
     modality: str | None = None,
+    start_after: float | None = None,
+    start_before: float | None = None,
 ) -> list[str]:
     if not catalog_path.is_file():
         raise CatalogError(f"catalog not found: {catalog_path}")
@@ -97,5 +99,9 @@ def query_catalog(
         df = df.filter(pl.col("processing_status") == processing_status)
     if modality is not None:
         df = df.filter(pl.col("modalities").str.split(",").list.contains(modality))
+    if start_after is not None:
+        df = df.filter(pl.col("start_time_s") >= start_after)
+    if start_before is not None:
+        df = df.filter(pl.col("start_time_s") <= start_before)
 
     return sorted(df["session_id"].to_list())

@@ -137,3 +137,73 @@ def test_cli_catalog_query(tmp_path: Path):
     bad = runner.invoke(app, ["catalog-query", str(tmp_path / "missing.parquet")])
     assert bad.exit_code == 1
     assert "error:" in bad.output
+
+
+def _write_catalog(path: Path) -> Path:
+    """Write a controlled 2-row catalog Parquet with distinct start_time_s.
+
+    Synth hardcodes start_time_s=0.0, so range tests build the Parquet directly.
+    """
+    df = pl.DataFrame(
+        {
+            "session_id": ["session-a", "session-b"],
+            "participant_id": ["p01", "p02"],
+            "protocol_id": ["p", "p"],
+            "device_config_id": ["d", "d"],
+            "consent_form_version": ["v1", "v1"],
+            "qc_status": ["pass", "pass"],
+            "processing_status": ["raw", "raw"],
+            "start_time_s": [100.0, 200.0],
+            "modalities": ["events,motion", "events,motion"],
+        }
+    ).select(_COLUMNS)
+    df.write_parquet(path)
+    return path
+
+
+def test_query_start_after(tmp_path: Path):
+    from htdp.catalog import query_catalog
+
+    cat = _write_catalog(tmp_path / "c.parquet")
+    assert query_catalog(cat, start_after=150.0) == ["session-b"]
+
+
+def test_query_start_before(tmp_path: Path):
+    from htdp.catalog import query_catalog
+
+    cat = _write_catalog(tmp_path / "c.parquet")
+    assert query_catalog(cat, start_before=150.0) == ["session-a"]
+
+
+def test_query_range_inclusive_both_ends(tmp_path: Path):
+    from htdp.catalog import query_catalog
+
+    cat = _write_catalog(tmp_path / "c.parquet")
+    assert query_catalog(cat, start_after=100.0, start_before=200.0) == [
+        "session-a",
+        "session-b",
+    ]
+
+
+def test_query_start_after_inclusive_boundary(tmp_path: Path):
+    from htdp.catalog import query_catalog
+
+    cat = _write_catalog(tmp_path / "c.parquet")
+    assert query_catalog(cat, start_after=200.0) == ["session-b"]
+
+
+def test_query_inverted_range_empty(tmp_path: Path):
+    from htdp.catalog import query_catalog
+
+    cat = _write_catalog(tmp_path / "c.parquet")
+    assert query_catalog(cat, start_after=200.0, start_before=100.0) == []
+
+
+def test_query_range_and_existing_filter(tmp_path: Path):
+    from htdp.catalog import query_catalog
+
+    cat = _write_catalog(tmp_path / "c.parquet")
+    assert query_catalog(cat, start_after=100.0, protocol="p") == [
+        "session-a",
+        "session-b",
+    ]
