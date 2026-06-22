@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +17,9 @@ class IkUnavailable(RuntimeError):
 class IkResult:
     joint_trajectory: list[list[float]]
     max_error: float
+    timestamps: list[float]
+    targets: list[tuple[float, float, float]]
+    errors: list[float]
 
 
 def replay_release_ik(release_dir: Path, max_steps: int = 50, ik_iters: int = 10) -> IkResult:
@@ -45,9 +49,12 @@ def replay_release_ik(release_dir: Path, max_steps: int = 50, ik_iters: int = 10
 
     n = min(max_steps, len(wrist))
     trajectory: list[list[float]] = []
+    timestamps: list[float] = []
+    targets: list[tuple[float, float, float]] = []
+    errors: list[float] = []
     max_error = 0.0
     for i in range(n):
-        _, x, y, z = wrist[i]
+        t, x, y, z = wrist[i]
         target = np.array([x, y, z])
         task.set_target(SE3.from_translation(target))
         for _ in range(ik_iters):
@@ -56,5 +63,35 @@ def replay_release_ik(release_dir: Path, max_steps: int = 50, ik_iters: int = 10
         mujoco.mj_forward(model, cfg.data)
         trajectory.append([float(q) for q in cfg.data.qpos])
         err = float(np.linalg.norm(cfg.data.xpos[eid] - target))
+        timestamps.append(float(t))
+        targets.append((float(x), float(y), float(z)))
+        errors.append(err)
         max_error = max(max_error, err)
-    return IkResult(joint_trajectory=trajectory, max_error=max_error)
+    return IkResult(
+        joint_trajectory=trajectory,
+        max_error=max_error,
+        timestamps=timestamps,
+        targets=targets,
+        errors=errors,
+    )
+
+
+def write_ik_trajectory(result: IkResult, out_path: Path, *, force: bool = False) -> Path:
+    """Write an IkResult to a CSV trajectory file. Pure stdlib — no IK deps."""
+    if out_path.exists() and not force:
+        raise FileExistsError(f"refusing to overwrite {out_path} (use --force)")
+    joint_count = len(result.joint_trajectory[0]) if result.joint_trajectory else 0
+    header = (
+        ["timestamp_s"]
+        + [f"q{j}" for j in range(joint_count)]
+        + ["target_x", "target_y", "target_z", "tracking_error_m"]
+    )
+    with out_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(header)
+        for i in range(len(result.joint_trajectory)):
+            tx, ty, tz = result.targets[i]
+            writer.writerow(
+                [result.timestamps[i], *result.joint_trajectory[i], tx, ty, tz, result.errors[i]]
+            )
+    return out_path

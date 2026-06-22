@@ -47,3 +47,14 @@ def test_cli_replay_ik(tmp_path: Path):
     result = runner.invoke(app, ["replay-ik", str(rel), "--max-steps", "10"])
     assert result.exit_code == 0, result.output
     assert "max tracking error" in result.output
+
+
+def test_result_carries_per_step_metadata(tmp_path: Path):
+    res = replay_release_ik(_release(tmp_path), max_steps=10)
+    n = len(res.joint_trajectory)
+    assert n == 10
+    assert len(res.timestamps) == n
+    assert len(res.targets) == n
+    assert len(res.errors) == n
+    assert res.max_error == max(res.errors)
+    assert all(len(t) == 3 for t in res.targets)
