@@ -89,4 +89,5 @@ class DatasetRelease(_Base):
     profile: str
     session_ids: list[str]
     absent_modalities: list[str] = Field(default_factory=list)
+    absent_modalities_by_session: dict[str, list[str]] = Field(default_factory=dict)
     manifest_sha256: str

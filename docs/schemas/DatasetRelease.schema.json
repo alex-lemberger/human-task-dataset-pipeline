@@ -8,6 +8,16 @@
       "title": "Absent Modalities",
       "type": "array"
     },
+    "absent_modalities_by_session": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Absent Modalities By Session",
+      "type": "object"
+    },
     "manifest_sha256": {
       "title": "Manifest Sha256",
       "type": "string"

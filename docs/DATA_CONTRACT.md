@@ -150,10 +150,12 @@ Pydantic models in `src/htdp/schemas/models.py`. JSON Schema exported to `docs/s
 
 The `absent_modalities` field in the release manifest (`manifest.json`) is now
 **computed** from consent flags and on-disk file presence — no longer a fixed
-`["eeg", "video"]`. A modality is recorded as absent if any session forbids it via its
-consent (`distribute_raw_video`, `distribute_raw_eeg`) or if no files matching the
-modality's glob patterns exist in any session. Motion data is never filtered and
-never appears in this list.
+`["eeg", "video"]`. It lists modalities that are absent from **every** session (the
+intersection of per-session absent lists). For per-session detail, the manifest includes
+`absent_modalities_by_session`: a map from `session_id` to the list of modalities absent
+from that session (forbidden by consent or not present). This complements the release-wide
+`absent_modalities` which covers only modalities absent from all sessions. Motion data is
+never filtered and never appears in either field.
 
 ---
 
