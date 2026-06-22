@@ -26,6 +26,21 @@ def load_release_motion(
     return out
 
 
+def load_release_pose(
+    release_dir: Path,
+) -> dict[str, list[tuple[float, float, float, float, float, float, float, float]]]:
+    out: dict[str, list[tuple[float, float, float, float, float, float, float, float]]] = {}
+    sessions = sorted((release_dir / "data").iterdir())
+    sid = sessions[0].name
+    for tracker in _TRACKERS:
+        df = pl.read_csv(release_dir / "data" / sid / "streams" / f"motion_{tracker}.csv")
+        out[tracker] = [
+            (r["timestamp_s"], r["x_m"], r["y_m"], r["z_m"], r["qw"], r["qx"], r["qy"], r["qz"])
+            for r in df.iter_rows(named=True)
+        ]
+    return out
+
+
 def _model_xml() -> str:
     bodies = "\n".join(
         f'<body name="{t}" mocap="true" pos="0 0 1">'
