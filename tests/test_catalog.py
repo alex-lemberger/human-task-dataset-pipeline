@@ -207,3 +207,20 @@ def test_query_range_and_existing_filter(tmp_path: Path):
         "session-a",
         "session-b",
     ]
+
+
+def test_cli_catalog_query_range(tmp_path: Path):
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+
+    cat = _write_catalog(tmp_path / "c.parquet")
+    runner = CliRunner()
+
+    after = runner.invoke(app, ["catalog-query", str(cat), "--start-after", "150"])
+    assert after.exit_code == 0, after.output
+    assert after.output.split() == ["session-b"]
+
+    before = runner.invoke(app, ["catalog-query", str(cat), "--start-before", "150"])
+    assert before.exit_code == 0, before.output
+    assert before.output.split() == ["session-a"]

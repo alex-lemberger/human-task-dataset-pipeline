@@ -210,6 +210,8 @@ def catalog_query(
     participant: str | None = typer.Option(None, "--participant"),
     processing_status: str | None = typer.Option(None, "--processing-status"),
     modality: str | None = typer.Option(None, "--modality"),
+    start_after: float | None = typer.Option(None, "--start-after"),
+    start_before: float | None = typer.Option(None, "--start-before"),
 ) -> None:
     """Print session_ids from a catalog matching the given filters (AND)."""
     from htdp.catalog import CatalogError, query_catalog
@@ -222,6 +224,8 @@ def catalog_query(
             participant=participant,
             processing_status=processing_status,
             modality=modality,
+            start_after=start_after,
+            start_before=start_before,
         )
     except CatalogError as exc:
         typer.echo(f"error: {exc}", err=True)
