@@ -117,3 +117,38 @@ def test_orientation_cost_runs_and_is_deterministic(tmp_path: Path):
     assert isinstance(a.max_orientation_error, float)
     assert a.max_orientation_error >= 0.0
     assert a.joint_trajectory == b.joint_trajectory
+
+
+def test_cli_orientation_cost_out(tmp_path: Path):
+    import csv
+
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+
+    rel = _release(tmp_path)
+    out = tmp_path / "traj.csv"
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "replay-ik",
+            str(rel),
+            "--max-steps",
+            "10",
+            "--orientation-cost",
+            "1.0",
+            "--out",
+            str(out),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "max orientation error" in result.output
+    header = next(csv.reader(out.open(encoding="utf-8")))
+    assert header[-5:] == [
+        "target_qw",
+        "target_qx",
+        "target_qy",
+        "target_qz",
+        "orientation_error_rad",
+    ]

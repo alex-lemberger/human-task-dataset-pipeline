@@ -177,17 +177,22 @@ def replay_ik(
     max_steps: int = 50,
     out: Path | None = typer.Option(None, "--out"),
     force: bool = typer.Option(False, "--force"),
+    orientation_cost: float = typer.Option(0.0, "--orientation-cost"),
 ) -> None:
     """Drive a robot arm along a release's wrist path via IK (headless)."""
     from htdp.replay.ik import IkUnavailable, replay_release_ik, write_ik_trajectory
 
     try:
-        result = replay_release_ik(release_dir, max_steps=max_steps)
+        result = replay_release_ik(
+            release_dir, max_steps=max_steps, orientation_cost=orientation_cost
+        )
     except IkUnavailable as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(
-        f"stepped {len(result.joint_trajectory)} steps, max tracking error {result.max_error:.4f} m"
+        f"stepped {len(result.joint_trajectory)} steps, "
+        f"max tracking error {result.max_error:.4f} m, "
+        f"max orientation error {result.max_orientation_error:.4f} rad"
     )
     if out is not None:
         try:
