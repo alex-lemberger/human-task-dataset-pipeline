@@ -65,6 +65,7 @@ Usage:
 - `htdp replay data/releases/<name>`
 - `htdp export-bids <raw_dir> <out_dir> [--force]` (**read-only export**; writes a separate BIDS tree, never mutates raw/processed/releases)
 - `htdp export-release-bids <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to multi-subject BIDS)
+- `htdp export-release-rosbag <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to one rosbag2 mcap bag per session; requires the `rosbag` extra: `uv sync --extra rosbag`)
 
 ## Extending the project
 

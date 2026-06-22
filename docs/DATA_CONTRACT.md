@@ -248,3 +248,19 @@ packaged release directory and writes one multi-subject BIDS dataset. Key charac
   deduplicated.
 
 ---
+
+---
+
+## Release-level rosbag2 export
+
+The `htdp export-release-rosbag <release_dir> <out_dir> [--force]` command exports a
+packaged release into one rosbag2 (mcap) bag **per session** under `out_dir/<session_id>/`.
+
+- Motion data: per-tracker topic `/motion/<tracker>` carrying `geometry_msgs/PoseStamped`
+  messages (one per CSV row; quality and defect_tag columns are dropped).
+- Events: topic `/events` carrying `std_msgs/String` messages (one per row, `data=label`).
+- The dataset inherits the release's consent filtering: sessions whose consent forbids
+  the requested profile are excluded during packaging and thus absent from the export.
+- EEG is not yet exported to rosbag2 (deferred).
+- Install the optional extra first: `uv sync --extra rosbag`.
+
