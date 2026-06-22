@@ -3,6 +3,15 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from htdp.export.eeg_bids import (
+    EEG_CHANNELS_HEADER,
+    eeg_binary,
+    eeg_channels_rows,
+    eeg_json,
+    estimate_fs,
+    vhdr_text,
+    vmrk_text,
+)
 from htdp.export.labels import entity_stem, sanitize
 from htdp.export.sidecars import (
     PARTICIPANTS_HEADER,
@@ -32,6 +41,20 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
     lines = path.read_text(encoding="utf-8").splitlines()
     header = lines[0].split(",")
     return [dict(zip(header, line.split(","))) for line in lines[1:] if line]
+
+
+def _read_eeg_csv(path: Path) -> tuple[list[str], list[float], list[list[float]]]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    labels = lines[0].split(",")[1:]
+    timestamps: list[float] = []
+    samples: list[list[float]] = []
+    for line in lines[1:]:
+        if not line:
+            continue
+        cells = line.split(",")
+        timestamps.append(float(cells[0]))
+        samples.append([float(c) for c in cells[1:]])
+    return labels, timestamps, samples
 
 
 def _write_text(path: Path, text: str) -> None:
@@ -86,4 +109,25 @@ def export_motion_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> Pat
     dump_json(sidecar, motion_dir / f"{stem}_motion.json")
     _write_text(motion_dir / f"{stem}_channels.tsv", channels_tsv)
     _write_text(motion_dir / f"sub-{sub}_task-{task}_events.tsv", events_tsv)
+
+    eeg_streams = [s for s in device.streams if s.role == "eeg"]
+    if eeg_streams:
+        eeg_dir = out_dir / f"sub-{sub}" / "eeg"
+        eeg_dir.mkdir(parents=True)
+        for s in eeg_streams:
+            labels, timestamps, samples = _read_eeg_csv(raw_dir / s.path)
+            try:
+                fs = estimate_fs(timestamps)
+            except ValueError as exc:
+                raise BidsExportError(f"eeg stream '{s.name}': {exc}") from exc
+            acq = sanitize(s.name)
+            eeg_stem = f"sub-{sub}_task-{task}_acq-{acq}"
+            _write_text(eeg_dir / f"{eeg_stem}_eeg.vhdr", vhdr_text(eeg_stem, labels, fs))
+            _write_text(eeg_dir / f"{eeg_stem}_eeg.vmrk", vmrk_text(eeg_stem))
+            (eeg_dir / f"{eeg_stem}_eeg.eeg").write_bytes(eeg_binary(samples))
+            dump_json(eeg_json(task, len(labels), fs), eeg_dir / f"{eeg_stem}_eeg.json")
+            _write_text(
+                eeg_dir / f"{eeg_stem}_channels.tsv",
+                dicts_to_tsv(EEG_CHANNELS_HEADER, eeg_channels_rows(labels)),
+            )
     return out_dir
