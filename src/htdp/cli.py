@@ -169,3 +169,18 @@ def replay(release_dir: Path) -> None:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(f"stepped {frames} frames")
+
+
+@app.command()
+def replay_ik(release_dir: Path, max_steps: int = 50) -> None:
+    """Drive a robot arm along a release's wrist path via IK (headless)."""
+    from htdp.replay.ik import IkUnavailable, replay_release_ik
+
+    try:
+        result = replay_release_ik(release_dir, max_steps=max_steps)
+    except IkUnavailable as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"stepped {len(result.joint_trajectory)} steps, max tracking error {result.max_error:.4f} m"
+    )

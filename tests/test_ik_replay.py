@@ -35,3 +35,15 @@ def test_deterministic(tmp_path: Path):
     a = replay_release_ik(rel, max_steps=20)
     b = replay_release_ik(rel, max_steps=20)
     assert a.joint_trajectory == b.joint_trajectory
+
+
+def test_cli_replay_ik(tmp_path: Path):
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+
+    rel = _release(tmp_path)
+    runner = CliRunner()
+    result = runner.invoke(app, ["replay-ik", str(rel), "--max-steps", "10"])
+    assert result.exit_code == 0, result.output
+    assert "max tracking error" in result.output
