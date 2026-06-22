@@ -109,7 +109,9 @@ raw_root, releases_root)`), giving releases under one `releases_root`. Then:
   release → `1`).
 - **session_ids:** comma-joined sorted ids of that release (e.g. `"synth-0001"`).
 - **profile:** equals the profile value the release was packaged with.
-- **absent_modalities:** `""` for synth (no video/eeg present to drop) — assert empty string.
+- **absent_modalities:** for a `commercial_dataset` release of synth sessions this is
+  `"eeg,video"` (that profile's consent forbids eeg+video; comma-joined sorted) — assert the
+  exact string read back from the manifest, or `"eeg,video"` directly.
 - **manifest_sha256:** equals the value in that release's `manifest.json` (read back, not
   hardcoded).
 - **Determinism:** two builds of the same releases dir → byte-identical Parquet.
