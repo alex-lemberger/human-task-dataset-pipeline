@@ -57,3 +57,21 @@ def test_malformed_session_raises(tmp_path: Path):
     (session_dir / "device_config.json").write_text("{}", encoding="utf-8")
     with pytest.raises(CatalogError):
         scan_sessions(tmp_path / "raw")
+
+
+def test_cli_catalog(tmp_path: Path):
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+
+    generate_session(tmp_path / "raw", seed=1)
+    generate_session(tmp_path / "raw", seed=2)
+    runner = CliRunner()
+    ok = runner.invoke(app, ["catalog", str(tmp_path / "raw"), str(tmp_path / "c.parquet")])
+    assert ok.exit_code == 0, ok.output
+    assert "2 sessions" in ok.output
+    assert (tmp_path / "c.parquet").exists()
+
+    bad = runner.invoke(app, ["catalog", str(tmp_path / "nope"), str(tmp_path / "c2.parquet")])
+    assert bad.exit_code == 1
+    assert "error:" in bad.output

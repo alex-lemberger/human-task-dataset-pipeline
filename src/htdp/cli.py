@@ -184,3 +184,19 @@ def replay_ik(release_dir: Path, max_steps: int = 50) -> None:
     typer.echo(
         f"stepped {len(result.joint_trajectory)} steps, max tracking error {result.max_error:.4f} m"
     )
+
+
+@app.command()
+def catalog(sessions_dir: Path, out_path: Path) -> None:
+    """Build a multi-session Parquet catalog from a raw sessions directory."""
+    import polars as pl
+
+    from htdp.catalog import CatalogError, build_catalog
+
+    try:
+        out = build_catalog(sessions_dir, out_path)
+    except CatalogError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    n = pl.read_parquet(out).height
+    typer.echo(f"wrote {out} ({n} sessions)")
