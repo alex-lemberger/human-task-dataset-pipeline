@@ -32,7 +32,7 @@ src/htdp/
   qc/           # Per-stream and cross-stream checks, HTML/JSON report
   consent/      # Consent model, release profiles, export gate
   release/      # Release packaging, manifest, release manifest
-  replay/       # MuJoCo mocap-body player (optional dependency: extra "replay")
+  replay/       # MuJoCo mocap-body player + IK robot-arm replay (optional dep: extra "replay")
   cli.py        # Typer CLI — the only product surface
 ```
 
@@ -45,7 +45,14 @@ htdp process    data/raw/<id>
 htdp qc         data/processed/<id>
 htdp package    <id...> --release <name> --profile <profile>
 htdp replay     data/releases/<name>
+htdp replay-ik  data/releases/<name> [--max-steps N]
 ```
+
+## IK robot-arm replay
+
+`htdp replay-ik` drives a vendored 5-DOF arm (`src/htdp/replay/assets/arm.xml`) so its
+end-effector follows the `right_wrist` Cartesian path of a release via `mink` differential
+IK; returns the joint trajectory + max tracking error; headless, deterministic; position-only.
 
 ## Design constraints (v0.1)
 

@@ -15,6 +15,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - Consent gate: block-on-conflict, three release profiles, atomic staging (`htdp package`)
 - Reproducibility: identical release-manifest checksums across two runs
 - MuJoCo mocap-body replay from the packaged release (optional dep, smoke-tested headless) (`htdp replay`)
+- IK / robot-arm replay (beyond mocap spheres): differential IK with mink+daqp, vendored 5-DOF arm (`htdp replay-ik`)
 - AGENTS.md harness instructions
 - Docs: ARCHITECTURE, DATA_CONTRACT, ETHICS_AND_CONSENT, this ROADMAP
 - Protocol: `protocols/reach-grasp-place.md`
@@ -31,7 +32,6 @@ The first milestone proves the *factory* works before any hardware exists.
 - EEG capture — **in progress (XDF eeg ingest landed; EEG-BIDS export landed)**
 - ROS 2 / rosbag2 export — **done** (motion + events + EEG via `htdp export-release-rosbag`)
 - Motion-BIDS export — **done** (single-session + multi-subject release-level export)
-- IK / robot-arm replay (beyond mocap spheres)
 - Consent *filtering* — strip disallowed modalities from a release while still including the session — **in progress (modality filtering landed)**
 - Multi-session queryable catalog
 - Agent-orchestration layer (Hermes / OpenClaw)
@@ -51,5 +51,5 @@ The following were considered and explicitly deferred — not missed:
 - LSL/XDF in v0.1 (a planned `ingest` step will bridge it; raw-as-CSV is intentional)
 - Video and EEG (schema slots exist; data capture deferred)
 - ROS 2 / rosbag2 — **done** for motion + events + EEG (`htdp export-release-rosbag`)
-- IK/robot-arm replay (mocap spheres prove round-trip; arm kinematics in v0.2)
+- IK/robot-arm replay — **done** (mocap spheres via `htdp replay`, differential IK via `htdp replay-ik`)
 - Multi-session catalog (single-session pipeline is enough for v0.1 trust claim)

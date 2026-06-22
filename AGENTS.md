@@ -6,7 +6,7 @@ spine.
 
 ## Hard rules
 - Do NOT add servers (Postgres/MinIO/FastAPI), Docker, dashboards, real hardware,
-  LSL/XDF, video, EEG, ROS, or IK/robot replay in v0.1.
+  LSL/XDF, video, EEG, or ROS in v0.1.
 - Do NOT store raw data in a database.
 - Do NOT bypass consent checks. `package` blocks on conflict and writes nothing.
 - Do NOT modify raw data during processing. Raw is immutable.
@@ -63,6 +63,7 @@ Usage:
 - `htdp qc data/processed/<session_id>`
 - `htdp package --release <name> --profile <profile> <session_ids...>`
 - `htdp replay data/releases/<name>`
+- `htdp replay-ik <release_dir> [--max-steps N]` (drive a vendored 5-DOF arm's EEF along the release's wrist path via mink differential IK; requires `uv sync --extra replay` which includes mujoco, mink, and daqp)
 - `htdp export-bids <raw_dir> <out_dir> [--force]` (**read-only export**; writes a separate BIDS tree, never mutates raw/processed/releases)
 - `htdp export-release-bids <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to multi-subject BIDS)
 - `htdp export-release-rosbag <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to one rosbag2 mcap bag per session; includes motion, events, and EEG (custom `EegSample` message) when present; requires the `rosbag` extra: `uv sync --extra rosbag`)
@@ -74,5 +75,5 @@ Usage:
 - Changing a schema model requires updating `docs/DATA_CONTRACT.md` and the JSON schemas
   (`uv run python -c "from pathlib import Path; from htdp.schemas.export import
   export_json_schemas; export_json_schemas(Path('docs/schemas'))"`).
-- The `replay` extra (`mujoco`) is optional. Core tests must pass without it.
+- The `replay` extra (`mujoco`, `mink>=1.1`, `daqp>=0.5`) is optional. Core tests must pass without it.
 - New CLI commands go in `src/htdp/cli.py`; business logic goes in a matching submodule.
