@@ -45,3 +45,22 @@ def vmrk_text(stem: str) -> str:
         "[Marker Infos]\n"
         "Mk1=New Segment,,1,1,0\n"
     )
+
+
+EEG_CHANNELS_HEADER: list[str] = ["name", "type", "units"]
+
+
+def eeg_channels_rows(labels: list[str]) -> list[dict[str, str]]:
+    return [{"name": label, "type": "EEG", "units": "µV"} for label in labels]
+
+
+def eeg_json(task: str, n_channels: int, fs: float) -> dict[str, object]:
+    return {
+        "TaskName": task,
+        "SamplingFrequency": fs,
+        "EEGReference": "n/a",
+        "PowerLineFrequency": "n/a",
+        "SoftwareFilters": "n/a",
+        "EEGChannelCount": n_channels,
+        "RecordingType": "continuous",
+    }
