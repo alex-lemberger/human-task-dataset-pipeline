@@ -69,7 +69,7 @@ Usage:
 - `htdp export-release-rosbag <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to one rosbag2 mcap bag per session; includes motion, events, and EEG (custom `EegSample` message) when present; requires the `rosbag` extra: `uv sync --extra rosbag`)
 - `htdp catalog <sessions_dir> <out.parquet>` — builds a
 one-row-per-session Parquet inventory of a raw sessions directory (read-only).
-- `htdp catalog-query <catalog.parquet> [--protocol P] [--qc Q] [--participant PID] [--processing-status S] [--modality M]`
+- `htdp catalog-query <catalog.parquet> [--protocol P] [--qc Q] [--participant PID] [--processing-status S] [--modality M] [--start-after SECONDS] [--start-before SECONDS]`
 
 ## Extending the project
 

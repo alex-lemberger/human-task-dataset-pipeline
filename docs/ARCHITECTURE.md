@@ -63,8 +63,9 @@ the Parquet file). The catalog is read-only, does not modify any session data, a
 regenerated at any time.
 
 `htdp catalog-query <catalog.parquet>` filters the catalog by `--protocol/--qc/--participant/--processing-status/--modality`
-(AND semantics; `--modality` is set membership on the comma-joined modalities) and prints
-matching `session_id`s one per line for piping.
+(AND semantics; `--modality` is set membership on the comma-joined modalities) and supports inclusive range filters
+`--start-after SECONDS` / `--start-before SECONDS` (raw Unix seconds, AND-combined with other filters). Prints matching
+`session_id`s one per line for piping.
 
 ## Design constraints (v0.1)
 
