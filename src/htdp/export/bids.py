@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import Counter
+
 import shutil
 from pathlib import Path
 
@@ -103,7 +105,7 @@ def _write_session_bids(out_dir: Path, raw_dir: Path, ses: str | None) -> dict[s
         dicts_to_tsv(EVENTS_HEADER, events_rows(events)),
     )
 
-    eeg_streams = [s for s in device.streams if s.role == "eeg"]
+    eeg_streams = [s for s in device.streams if s.role == "eeg" and (raw_dir / s.path).exists()]
     if eeg_streams:
         eeg_dir = subj_dir / "eeg"
         eeg_dir.mkdir(parents=True)
@@ -143,4 +145,39 @@ def export_motion_bids(raw_dir: Path, out_dir: Path, force: bool = False) -> Pat
     dump_json(dataset_description(session.session_id), out_dir / "dataset_description.json")
     _write_text(out_dir / "README", readme_text(session.session_id))
     _write_text(out_dir / "participants.tsv", dicts_to_tsv(PARTICIPANTS_HEADER, [row]))
+    return out_dir
+
+
+def export_release_bids(release_dir: Path, out_dir: Path, force: bool = False) -> Path:
+    data_dir = release_dir / "data"
+    if not data_dir.is_dir():
+        raise BidsExportError(f"release has no data/ directory: {release_dir}")
+    session_dirs = sorted(p for p in data_dir.iterdir() if p.is_dir())
+    if not session_dirs:
+        raise BidsExportError(f"release has no sessions: {release_dir}")
+
+    subs: list[str] = []
+    for sd in session_dirs:
+        session = Session.model_validate_json((sd / "session.json").read_text(encoding="utf-8"))
+        subs.append(sanitize(session.participant_id))
+    counts = Counter(subs)
+
+    if out_dir.exists():
+        if not force:
+            raise BidsExportError(f"output already exists: {out_dir} (use force=True)")
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True)
+
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for sd, sub in zip(session_dirs, subs):
+        ses = sanitize(sd.name) if counts[sub] > 1 else None
+        row = _write_session_bids(out_dir, sd, ses)
+        if row["participant_id"] not in seen:
+            rows.append(row)
+            seen.add(row["participant_id"])
+
+    dump_json(dataset_description(release_dir.name), out_dir / "dataset_description.json")
+    _write_text(out_dir / "README", readme_text(release_dir.name))
+    _write_text(out_dir / "participants.tsv", dicts_to_tsv(PARTICIPANTS_HEADER, rows))
     return out_dir
