@@ -14,8 +14,11 @@ def _release(tmp_path: Path) -> Path:
     generate_session(tmp_path / "raw", seed=1)
     generate_session(tmp_path / "raw", seed=2)
     return package_release(
-        ["synth-0001", "synth-0002"], "rel", ReleaseProfile.COMMERCIAL_DATASET,
-        tmp_path / "raw", tmp_path / "releases",
+        ["synth-0001", "synth-0002"],
+        "rel",
+        ReleaseProfile.COMMERCIAL_DATASET,
+        tmp_path / "raw",
+        tmp_path / "releases",
     )
 
 
@@ -39,8 +42,11 @@ def test_participant_collision_adds_ses(tmp_path: Path):
     sp.write_text(json.dumps(data), encoding="utf-8")
     write_checksums(tmp_path / "raw" / "synth-0002")
     rel = package_release(
-        ["synth-0001", "synth-0002"], "rel", ReleaseProfile.COMMERCIAL_DATASET,
-        tmp_path / "raw", tmp_path / "releases",
+        ["synth-0001", "synth-0002"],
+        "rel",
+        ReleaseProfile.COMMERCIAL_DATASET,
+        tmp_path / "raw",
+        tmp_path / "releases",
     )
     out = export_release_bids(rel, tmp_path / "bids")
     assert (out / "sub-p0001" / "ses-synth0001" / "motion").exists()
@@ -78,16 +84,24 @@ def test_forbidden_eeg_absent_from_release_bids(tmp_path: Path):
     session = ingest_xdf(tmp_path / "x.xdf", sc, tmp_path / "raw" / "real-0001")
     consent = session / "consent.json"
     data = _json.loads(consent.read_text(encoding="utf-8"))
-    data.update({
-        "distribute_raw_eeg": False,
-        "commercial_use": True, "model_training": True,
-        "third_party_access": True, "public_release": True, "internal_only": False,
-    })
+    data.update(
+        {
+            "distribute_raw_eeg": False,
+            "commercial_use": True,
+            "model_training": True,
+            "third_party_access": True,
+            "public_release": True,
+            "internal_only": False,
+        }
+    )
     consent.write_text(_json.dumps(data), encoding="utf-8")
     write_checksums(session)
     rel = package_release(
-        ["real-0001"], "rel", ReleaseProfile.COMMERCIAL_DATASET,
-        tmp_path / "raw", tmp_path / "releases",
+        ["real-0001"],
+        "rel",
+        ReleaseProfile.COMMERCIAL_DATASET,
+        tmp_path / "raw",
+        tmp_path / "releases",
     )
     out = export_release_bids(rel, tmp_path / "bids")
     assert (out / "sub-p0001" / "motion").exists()

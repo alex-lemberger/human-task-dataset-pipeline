@@ -64,6 +64,7 @@ Usage:
 - `htdp package --release <name> --profile <profile> <session_ids...>`
 - `htdp replay data/releases/<name>`
 - `htdp export-bids <raw_dir> <out_dir> [--force]` (**read-only export**; writes a separate BIDS tree, never mutates raw/processed/releases)
+- `htdp export-release-bids <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to multi-subject BIDS)
 
 ## Extending the project
 

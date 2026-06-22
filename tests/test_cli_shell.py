@@ -116,8 +116,11 @@ def test_export_release_bids_happy_and_missing(tmp_path):
 
     generate_session(tmp_path / "raw", seed=1)
     rel = package_release(
-        ["synth-0001"], "rel", ReleaseProfile.COMMERCIAL_DATASET,
-        tmp_path / "raw", tmp_path / "releases",
+        ["synth-0001"],
+        "rel",
+        ReleaseProfile.COMMERCIAL_DATASET,
+        tmp_path / "raw",
+        tmp_path / "releases",
     )
     runner = CliRunner()
     ok = runner.invoke(app, ["export-release-bids", str(rel), str(tmp_path / "bids")])

@@ -228,3 +228,23 @@ sidecar.
 The `acq` entity in the BIDS filename is derived from the EEG stream's `name` field via
 the same sanitization applied to other BIDS entities. Motion-only sessions export no
 `eeg/` directory (regression-safe).
+
+
+---
+
+## Release-level BIDS export
+
+The `htdp export-release-bids <release_dir> <out_dir> [--force]` command reads a
+packaged release directory and writes one multi-subject BIDS dataset. Key characteristics:
+
+- One packaged release → one BIDS directory; the release is never mutated (read-only export).
+- Participant IDs are flattened: `sub-<participant>` with no `ses-` entity unless the same
+  participant appears in more than one session within the release, in which case each
+  session gets a `ses-<session_id>` subdirectory.
+- `dataset_description.json.Name` is set to the release name.
+- The dataset inherits the release's consent filtering: modalities that were dropped during
+  packaging (e.g., EEG when `distribute_raw_eeg` was false) are absent from the BIDS output.
+- `participants.tsv` is aggregated across all sessions, with duplicate participant IDs
+  deduplicated.
+
+---
