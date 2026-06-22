@@ -3,9 +3,11 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import numpy as np
+
 from rosbags.rosbag2 import Writer
 from rosbags.rosbag2.enums import StoragePlugin
-from rosbags.typesys import Stores, get_typestore
+from rosbags.typesys import Stores, get_types_from_msg, get_typestore
 from rosbags.typesys.stores.ros2_humble import (
     builtin_interfaces__msg__Time as Time,
     geometry_msgs__msg__Point as Point,
@@ -19,7 +21,11 @@ from rosbags.typesys.stores.ros2_humble import (
 from htdp.export.labels import sanitize
 from htdp.schemas.models import DeviceConfig, Session
 
+_EEG_SAMPLE_TYPE = "htdp_msgs/msg/EegSample"
+_EEG_SAMPLE_MSGDEF = "float64 stamp\nfloat32[] data\n"
 _TYPESTORE = get_typestore(Stores.ROS2_HUMBLE)
+_TYPESTORE.register(get_types_from_msg(_EEG_SAMPLE_MSGDEF, _EEG_SAMPLE_TYPE))
+_EEG_SAMPLE = _TYPESTORE.types[_EEG_SAMPLE_TYPE]
 
 
 class RosbagExportError(RuntimeError):
@@ -30,6 +36,20 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
     lines = path.read_text(encoding="utf-8").splitlines()
     header = lines[0].split(",")
     return [dict(zip(header, line.split(","))) for line in lines[1:] if line]
+
+
+def _read_eeg_csv(path: Path) -> tuple[list[str], list[float], list[list[float]]]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    labels = lines[0].split(",")[1:]
+    timestamps: list[float] = []
+    samples: list[list[float]] = []
+    for line in lines[1:]:
+        if not line:
+            continue
+        cells = line.split(",")
+        timestamps.append(float(cells[0]))
+        samples.append([float(c) for c in cells[1:]])
+    return labels, timestamps, samples
 
 
 def _ns(timestamp_s: float) -> int:
@@ -64,6 +84,7 @@ def _write_session_bag(bag_dir: Path, raw_dir: Path) -> None:
     if not motion_streams:
         raise RosbagExportError(f"no motion streams in {raw_dir}")
     event_streams = [s for s in device.streams if s.role == "events"]
+    eeg_streams = [s for s in device.streams if s.role == "eeg" and (raw_dir / s.path).exists()]
 
     with Writer(bag_dir, version=9, storage_plugin=StoragePlugin.MCAP) as writer:
         for stream in motion_streams:
@@ -85,6 +106,22 @@ def _write_session_bag(bag_dir: Path, raw_dir: Path) -> None:
                     _ns(float(row["timestamp_s"])),
                     _TYPESTORE.serialize_cdr(event_msg, StringMsg.__msgtype__),
                 )
+        for stream in eeg_streams:
+            labels, timestamps, samples = _read_eeg_csv(raw_dir / stream.path)
+            topic = f"/eeg/{sanitize(stream.name)}"
+            conn = writer.add_connection(topic, _EEG_SAMPLE_TYPE, typestore=_TYPESTORE)
+            for ts_s, sample in zip(timestamps, samples):
+                eeg_msg = _EEG_SAMPLE(stamp=ts_s, data=np.array(sample, dtype=np.float32))
+                writer.write(conn, _ns(ts_s), _TYPESTORE.serialize_cdr(eeg_msg, _EEG_SAMPLE_TYPE))
+            label_conn = writer.add_connection(
+                f"{topic}/labels", StringMsg.__msgtype__, typestore=_TYPESTORE
+            )
+            first_ns = _ns(timestamps[0]) if timestamps else 0
+            writer.write(
+                label_conn,
+                first_ns,
+                _TYPESTORE.serialize_cdr(StringMsg(data=",".join(labels)), StringMsg.__msgtype__),
+            )
 
 
 def export_release_rosbag(release_dir: Path, out_dir: Path, force: bool = False) -> Path:
