@@ -75,3 +75,47 @@ def test_cli_catalog(tmp_path: Path):
     bad = runner.invoke(app, ["catalog", str(tmp_path / "nope"), str(tmp_path / "c2.parquet")])
     assert bad.exit_code == 1
     assert "error:" in bad.output
+
+
+def test_query_no_filters_returns_all(tmp_path: Path):
+    generate_session(tmp_path / "raw", seed=1)
+    generate_session(tmp_path / "raw", seed=2)
+    cat = build_catalog(tmp_path / "raw", tmp_path / "c.parquet")
+    from htdp.catalog import query_catalog
+
+    assert query_catalog(cat) == ["synth-0001", "synth-0002"]
+
+
+def test_query_protocol_filter(tmp_path: Path):
+    generate_session(tmp_path / "raw", seed=1)
+    cat = build_catalog(tmp_path / "raw", tmp_path / "c.parquet")
+    from htdp.catalog import query_catalog
+
+    assert query_catalog(cat, protocol="reach-grasp-place") == ["synth-0001"]
+    assert query_catalog(cat, protocol="nope") == []
+
+
+def test_query_modality_membership(tmp_path: Path):
+    generate_session(tmp_path / "raw", seed=1)
+    generate_session(tmp_path / "raw", seed=2)
+    cat = build_catalog(tmp_path / "raw", tmp_path / "c.parquet")
+    from htdp.catalog import query_catalog
+
+    assert query_catalog(cat, modality="motion") == ["synth-0001", "synth-0002"]
+    assert query_catalog(cat, modality="eeg") == []
+
+
+def test_query_and_semantics(tmp_path: Path):
+    generate_session(tmp_path / "raw", seed=1)
+    cat = build_catalog(tmp_path / "raw", tmp_path / "c.parquet")
+    from htdp.catalog import query_catalog
+
+    assert query_catalog(cat, protocol="reach-grasp-place", qc_status="pass") == ["synth-0001"]
+    assert query_catalog(cat, protocol="reach-grasp-place", qc_status="fail") == []
+
+
+def test_query_missing_catalog_raises(tmp_path: Path):
+    from htdp.catalog import CatalogError, query_catalog
+
+    with pytest.raises(CatalogError):
+        query_catalog(tmp_path / "nope.parquet")

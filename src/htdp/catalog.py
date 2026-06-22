@@ -69,3 +69,33 @@ def build_catalog(sessions_dir: Path, out_path: Path) -> Path:
     df = pl.DataFrame(rows).select(_COLUMNS)
     df.write_parquet(out_path)
     return out_path
+
+
+def query_catalog(
+    catalog_path: Path,
+    *,
+    protocol: str | None = None,
+    qc_status: str | None = None,
+    participant: str | None = None,
+    processing_status: str | None = None,
+    modality: str | None = None,
+) -> list[str]:
+    if not catalog_path.is_file():
+        raise CatalogError(f"catalog not found: {catalog_path}")
+    try:
+        df = pl.read_parquet(catalog_path)
+    except Exception as exc:  # noqa: BLE001 -- surface any unreadable parquet as CatalogError
+        raise CatalogError(f"cannot read catalog {catalog_path}: {exc}") from exc
+
+    if protocol is not None:
+        df = df.filter(pl.col("protocol_id") == protocol)
+    if qc_status is not None:
+        df = df.filter(pl.col("qc_status") == qc_status)
+    if participant is not None:
+        df = df.filter(pl.col("participant_id") == participant)
+    if processing_status is not None:
+        df = df.filter(pl.col("processing_status") == processing_status)
+    if modality is not None:
+        df = df.filter(pl.col("modalities").str.split(",").list.contains(modality))
+
+    return sorted(df["session_id"].to_list())
