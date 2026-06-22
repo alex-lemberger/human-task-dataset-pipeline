@@ -26,7 +26,7 @@ def _release(tmp_path: Path) -> Path:
 def test_tracks_wrist_within_tolerance(tmp_path: Path):
     res = replay_release_ik(_release(tmp_path), max_steps=30)
     assert len(res.joint_trajectory) == 30
-    assert all(len(row) == 5 for row in res.joint_trajectory)
+    assert all(len(row) == 6 for row in res.joint_trajectory)
     assert res.max_error < 0.05
 
 
@@ -77,7 +77,7 @@ def test_cli_replay_ik_out(tmp_path: Path):
 
     rows = list(csv.reader(out.open(encoding="utf-8")))
     assert len(rows) == 11  # header + 10 steps
-    assert [c for c in rows[0] if c.startswith("q")] == ["q0", "q1", "q2", "q3", "q4"]
+    assert [c for c in rows[0] if c.startswith("q")] == ["q0", "q1", "q2", "q3", "q4", "q5"]
 
 
 def test_cli_replay_ik_out_refuses_overwrite(tmp_path: Path):
@@ -152,3 +152,42 @@ def test_cli_orientation_cost_out(tmp_path: Path):
         "target_qz",
         "orientation_error_rad",
     ]
+
+
+def test_arm_reaches_full_pose(tmp_path: Path):
+    import math
+
+    import mink
+    import mujoco
+    import numpy as np
+    from mink.lie.se3 import SE3
+    from mink.lie.so3 import SO3
+
+    from htdp.replay.ik import _ARM_XML
+
+    model = mujoco.MjModel.from_xml_path(str(_ARM_XML))
+    data = mujoco.MjData(model)
+    cfg = mink.Configuration(model)
+    cfg.update(data.qpos)
+    task = mink.FrameTask(
+        frame_name="eef",
+        frame_type="body",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    limits = [mink.ConfigurationLimit(model)]
+    eid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "eef")
+    pos = np.array([0.5, 0.2, 0.9])
+    quat = np.array([math.cos(math.pi / 4), 0.0, 0.0, math.sin(math.pi / 4)])  # 90deg about z
+    for _ in range(200):
+        task.set_target(SE3.from_rotation_and_translation(SO3(wxyz=quat), pos))
+        vel = mink.solve_ik(cfg, [task], model.opt.timestep, "daqp", limits=limits)
+        cfg.integrate_inplace(vel, model.opt.timestep)
+    mujoco.mj_forward(model, cfg.data)
+    pos_err = float(np.linalg.norm(cfg.data.xpos[eid] - pos))
+    ori_err = float(
+        np.linalg.norm((SO3(wxyz=quat).inverse() @ SO3(wxyz=cfg.data.xquat[eid])).log())
+    )
+    assert pos_err < 0.01
+    assert ori_err < 0.01
