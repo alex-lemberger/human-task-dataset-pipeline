@@ -220,6 +220,22 @@ def catalog(sessions_dir: Path, out_path: Path) -> None:
 
 
 @app.command()
+def catalog_releases(releases_dir: Path, out_path: Path) -> None:
+    """Build a one-row-per-release Parquet inventory from a directory of releases."""
+    import polars as pl
+
+    from htdp.catalog import CatalogError, build_release_catalog
+
+    try:
+        out = build_release_catalog(releases_dir, out_path)
+    except CatalogError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    n = pl.read_parquet(out).height
+    typer.echo(f"wrote {out} ({n} releases)")
+
+
+@app.command()
 def catalog_query(
     catalog_path: Path,
     protocol: str | None = typer.Option(None, "--protocol"),

@@ -308,3 +308,22 @@ def test_scan_releases_skips_non_release_subdir(tmp_path: Path):
     (root / "not-a-release").mkdir(parents=True)  # no manifest.json
     with pytest.raises(CatalogError):  # no release subdirs at all
         scan_releases(root)
+
+
+def test_cli_catalog_releases(tmp_path: Path):
+    from typer.testing import CliRunner
+
+    from htdp.cli import app
+
+    releases = _two_releases(tmp_path)
+    runner = CliRunner()
+    ok = runner.invoke(app, ["catalog-releases", str(releases), str(tmp_path / "rel.parquet")])
+    assert ok.exit_code == 0, ok.output
+    assert "2 releases" in ok.output
+    assert (tmp_path / "rel.parquet").exists()
+
+    bad = runner.invoke(
+        app, ["catalog-releases", str(tmp_path / "nope"), str(tmp_path / "x.parquet")]
+    )
+    assert bad.exit_code == 1
+    assert "error:" in bad.output
