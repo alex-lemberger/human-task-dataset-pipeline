@@ -261,6 +261,6 @@ packaged release into one rosbag2 (mcap) bag **per session** under `out_dir/<ses
 - Events: topic `/events` carrying `std_msgs/String` messages (one per row, `data=label`).
 - The dataset inherits the release's consent filtering: sessions whose consent forbids
   the requested profile are excluded during packaging and thus absent from the export.
-- EEG is not yet exported to rosbag2 (deferred).
+- EEG-bearing sessions also emit, per EEG stream, a sample topic `/eeg/<stream>` (custom message `htdp_msgs/msg/EegSample` = `float64 stamp` + `float32[] data`, one message per sample) and a one-shot `/eeg/<stream>/labels` (`std_msgs/String`, comma-joined channel names). The custom message definition is embedded in the mcap file. EEG topics appear only when the release kept EEG (consent inheritance).
 - Install the optional extra first: `uv sync --extra rosbag`.
 

@@ -29,7 +29,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - Real hardware: VIVE tracker capture, LSL streaming, XDF ingest (`htdp ingest`: XDF → raw representation) — **in progress (XDF adapter landed)**
 - Video capture (MP4 population in the `video/` slot) — **in progress (ingest-video landed)**
 - EEG capture — **in progress (XDF eeg ingest landed; EEG-BIDS export landed)**
-- ROS 2 / rosbag2 export — **done** (motion+events via `htdp export-release-rosbag`; EEG deferred)
+- ROS 2 / rosbag2 export — **done** (motion + events + EEG via `htdp export-release-rosbag`)
 - Motion-BIDS export — **done** (single-session + multi-subject release-level export)
 - IK / robot-arm replay (beyond mocap spheres)
 - Consent *filtering* — strip disallowed modalities from a release while still including the session — **in progress (modality filtering landed)**
@@ -50,6 +50,6 @@ The following were considered and explicitly deferred — not missed:
 - Postgres, MinIO, FastAPI, Docker in v0.1 (no concrete reason yet; filesystem suffices)
 - LSL/XDF in v0.1 (a planned `ingest` step will bridge it; raw-as-CSV is intentional)
 - Video and EEG (schema slots exist; data capture deferred)
-- ROS 2 / rosbag2 — **done** for motion+events (`htdp export-release-rosbag`; EEG deferred)
+- ROS 2 / rosbag2 — **done** for motion + events + EEG (`htdp export-release-rosbag`)
 - IK/robot-arm replay (mocap spheres prove round-trip; arm kinematics in v0.2)
 - Multi-session catalog (single-session pipeline is enough for v0.1 trust claim)
