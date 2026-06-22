@@ -63,7 +63,7 @@ Usage:
 - `htdp qc data/processed/<session_id>`
 - `htdp package --release <name> --profile <profile> <session_ids...>`
 - `htdp replay data/releases/<name>`
-- `htdp replay-ik <release_dir> [--max-steps N] [--out PATH] [--force] [--orientation-cost FLOAT]` (drive a vendored 5-DOF arm's EEF along the release's wrist path via mink differential IK; `--orientation-cost` 0.0 = position-only, >0 weights best-effort wrist-orientation tracking; `--out` writes per-step joint trajectory CSV (`timestamp_s, q0..qN, target_x/y/z, tracking_error_m, target_qw/qx/qy/qz, orientation_error_rad`); `--force` overwrites; requires `uv sync --extra replay` which includes mujoco, mink, and daqp)
+- `htdp replay-ik <release_dir> [--max-steps N] [--out PATH] [--force] [--orientation-cost FLOAT]` (drive a vendored 6-DOF arm's EEF along the release's wrist path via mink differential IK; `--orientation-cost` 0.0 = position-only, >0 weights wrist-orientation tracking (full 6-DOF pose on the 6-DOF arm); `--out` writes per-step joint trajectory CSV (`timestamp_s, q0..qN, target_x/y/z, tracking_error_m, target_qw/qx/qy/qz, orientation_error_rad`); `--force` overwrites; requires `uv sync --extra replay` which includes mujoco, mink, and daqp)
 - `htdp export-bids <raw_dir> <out_dir> [--force]` (**read-only export**; writes a separate BIDS tree, never mutates raw/processed/releases)
 - `htdp export-release-bids <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to multi-subject BIDS)
 - `htdp export-release-rosbag <release_dir> <out_dir> [--force]` (**read-only export** of a packaged release to one rosbag2 mcap bag per session; includes motion, events, and EEG (custom `EegSample` message) when present; requires the `rosbag` extra: `uv sync --extra rosbag`)

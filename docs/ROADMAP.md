@@ -15,7 +15,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - Consent gate: block-on-conflict, three release profiles, atomic staging (`htdp package`)
 - Reproducibility: identical release-manifest checksums across two runs
 - MuJoCo mocap-body replay from the packaged release (optional dep, smoke-tested headless) (`htdp replay`)
-- IK / robot-arm replay (beyond mocap spheres): differential IK with mink+daqp, vendored 5-DOF arm (`htdp replay-ik`), trajectory export to CSV (`--out`), opt-in orientation tracking (`--orientation-cost`)
+- IK / robot-arm replay (beyond mocap spheres): differential IK with mink+daqp, vendored 6-DOF arm (`htdp replay-ik`), trajectory export to CSV (`--out`), full-pose orientation tracking (`--orientation-cost`)
 - AGENTS.md harness instructions
 - Docs: ARCHITECTURE, DATA_CONTRACT, ETHICS_AND_CONSENT, this ROADMAP
 - Protocol: `protocols/reach-grasp-place.md`
