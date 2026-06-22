@@ -28,7 +28,7 @@ The first milestone proves the *factory* works before any hardware exists.
 - Angular operations dashboard
 - Real hardware: VIVE tracker capture, LSL streaming, XDF ingest (`htdp ingest`: XDF → raw representation) — **in progress (XDF adapter landed)**
 - Video capture (MP4 population in the `video/` slot) — **in progress (ingest-video landed)**
-- EEG capture and EEG-BIDS export
+- EEG capture — **in progress (XDF eeg ingest landed; EEG-BIDS still deferred)**
 - ROS 2 / rosbag2 export
 - Motion-BIDS export — **in progress (single-session export landed)**
 - IK / robot-arm replay (beyond mocap spheres)

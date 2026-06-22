@@ -55,6 +55,7 @@ CLI is the only product surface. No server processes, no dashboard.
 Usage:
 - `uv sync --extra ingest` (install pyxdf optional dependency)
 - `htdp ingest <file.xdf> <ingest.json> --out data/raw`
+- The `ingest.json` sidecar `ingest_map` supports roles: `motion`, `events`, and `eeg`. An eeg entry shape: `{"role":"eeg","eeg_id":<id>,"channels":{<label>:<index>,...}}`.
 - `htdp ingest-video <session_dir> <clip.mp4> <video.json> [--force]`
 - `htdp synth --out data/raw`
 - `htdp validate data/raw/<session_id>`

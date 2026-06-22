@@ -91,6 +91,30 @@ File: `streams/events.csv`
 Event ordering invariant: `start < grasp < release < place < stop`. All events must
 fall within the session time bounds.
 
+
+---
+
+## EEG CSV columns
+
+File: `streams/eeg_<eeg_id>.csv`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `timestamp_s` | float (6dp) | Time relative to motion t0, seconds (may be negative if EEG leads motion) |
+| `<label>` | float (6dp) | One column per channel label in declared order from the ingest sidecar |
+
+The file is a wide CSV: one row per sample, `timestamp_s` as the first column followed by
+one column per channel label in the order declared in the ingest map. Timestamps are rebased
+to the motion `t0`. The EEG sample rate is not recorded in this slice. Each channel's value
+is a raw voltage reading from the XDF stream.
+
+The stream is registered in `device_config.json` as a `StreamRef` with `role="eeg"`,
+`fmt="csv"`, and `path="streams/eeg_<eeg_id>.csv"`.
+
+EEG data at release time respects consent filtering: if a session's consent form has
+`distribute_raw_eeg: false`, the EEG CSV is excluded from the packaged release and `"eeg"`
+appears in `manifest.json`'s `absent_modalities` list.
+
 ---
 
 ## Pre-raw ingest step (`htdp ingest`)
