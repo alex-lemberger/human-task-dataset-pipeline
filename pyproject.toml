@@ -1,7 +1,7 @@
 [project]
 name = "htdp"
-version = "0.1.0"
-description = "Consent-based human-task dataset pipeline (synthetic spine)"
+version = "0.2.0"
+description = "Consent-based human-task dataset pipeline (real-hardware ingest + governance)"
 requires-python = ">=3.11"
 dependencies = [
     "typer>=0.12",

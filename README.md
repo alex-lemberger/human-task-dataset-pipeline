@@ -1,18 +1,58 @@
-# Human-Task Dataset Pipeline (v0.1)
+# Human-Task Dataset Pipeline (v0.2)
 
-Consent-based human-task dataset pipeline for robotics. Filesystem-only spine with CLI.
+Consent-based human-task dataset pipeline for robotics. Filesystem-only spine with a CLI:
+ingest real LSL/XDF + video + EEG recordings (or synthesize sessions), validate, process to
+Parquet, QC, package consent-gated releases, export to BIDS / ROS 2, catalog, and replay on a
+robot arm via inverse kinematics.
 
-## Usage
+## Install
 
 ```bash
-uv sync --extra ingest    # install optional pyxdf dependency
-htdp ingest input.xdf ingest.json --out data/raw     # ingest LSL recording
-htdp synth --out data/raw                              # generate synthetic session
-htdp validate data/raw/<session_id>                     # validate raw folder
-htdp process data/raw/<session_id>                      # process to Parquet
-htdp qc data/processed/<session_id>                     # QC report
-htdp package --release <name> --profile <profile> <id..>  # consent-gated release
-htdp replay data/releases/<name>                        # MuJoCo mocap replay
+uv sync                      # core
+uv sync --extra ingest       # + pyxdf  (htdp ingest)
+uv sync --extra replay       # + mujoco/mink/daqp  (htdp replay, replay-ik)
+uv sync --extra rosbag       # + rosbags  (htdp export-release-rosbag)
+uv sync --extra dev          # + pytest/ruff/mypy
 ```
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md).
+Optional extras stay optional — core install and core tests require none of them.
+
+## Pipeline
+
+```bash
+# --- get raw sessions ---
+htdp synth --out data/raw                                  # synthetic session (seeded)
+htdp ingest input.xdf ingest.json --out data/raw/<id>      # ingest an LSL .xdf recording
+htdp ingest-video data/raw/<id> clip.mp4 video.json        # augment a session with video
+
+# --- core pipeline (cwd anchored at data/) ---
+htdp validate data/raw/<id>                                # schema + structure + checksums
+htdp process  data/raw/<id>                                # raw CSV -> Parquet
+htdp qc       data/processed/<id>                          # QC report (pass/warn/fail)
+htdp package  <id...> --release <name> --profile <profile> # per-session consent-gated release
+
+# --- export ---
+htdp export-bids          data/raw/<id> out/               # single-session Motion/EEG BIDS
+htdp export-release-bids  data/releases/<name> out/        # multi-subject BIDS
+htdp export-release-rosbag data/releases/<name> out/       # one rosbag2 (mcap) per session
+
+# --- catalog ---
+htdp catalog          data/raw catalog.parquet             # one row per session
+htdp catalog-query    catalog.parquet --protocol P --modality video --start-after 0
+htdp catalog-releases data/releases releases.parquet       # one row per release
+
+# --- replay ---
+htdp replay    data/releases/<name>                        # MuJoCo mocap-body replay
+htdp replay-ik data/releases/<name> --out traj.csv --orientation-cost 1.0  # IK on a 6-DOF arm
+```
+
+## Notes
+
+- The CLI is anchored to a `data/` working directory: `process`/`package` read and write
+  `data/raw`, `data/processed`, `data/releases` relative to the current directory.
+- Consent filtering is **per-session** — a disallowed modality is dropped only from the
+  sessions whose consent forbids it; the rest keep it.
+
+See [CHANGELOG.md](CHANGELOG.md), [docs/ROADMAP.md](docs/ROADMAP.md),
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md),
+and [docs/ETHICS_AND_CONSENT.md](docs/ETHICS_AND_CONSENT.md).
