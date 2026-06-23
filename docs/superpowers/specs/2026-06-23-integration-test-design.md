@@ -33,6 +33,10 @@ Two real integration constraints were discovered and must shape the test:
    the session; editing `consent.json` afterward makes `validate` fail
    (`checksum mismatch: consent.json`). `ingest-video` re-checksums the folder, so the order
    must be: synth → edit consent → ingest-video → validate.
+3. **The raw session dir name must encode the session number.** `process` parses an int from
+   the directory name (a non-conforming name like `ingested` fails with
+   `invalid literal for int()`), so the `ingest --out` target must use the session-id
+   convention `data/raw/synth-0001`, not an arbitrary name.
 
 Command surface (cli.py): base-env = `synth, ingest-video, validate, process, qc, package,
 catalog, catalog-releases, catalog-query, export-bids, export-release-bids`; extra-gated =
@@ -89,10 +93,12 @@ Each runs `_build_core_release` in its own isolated fs, then the extra command:
 - `test_pipeline_rosbag` — `pytest.importorskip("rosbags")`; `export-release-rosbag
   data/releases/rel rosbag_out` exit 0; a per-session bag dir exists under `rosbag_out`.
 - `test_pipeline_xdf_ingest` — `pytest.importorskip("pyxdf")`; use
-  `tests._xdf_writer.write_xdf` + `build_sidecar` to produce an `.xdf` + sidecar, then
-  `ingest <xdf> <sidecar> --out data/raw` exit 0, then `validate`/`process` the ingested
-  session exit 0. Proves the real-hardware entry path threads. (Reuses the exact fixture the
-  XDF round-trip unit tests use.)
+  `tests._xdf_writer.write_xdf` + `build_sidecar` (from a throwaway `synth` session) to produce
+  an `.xdf` + sidecar, then `ingest s.xdf ingest.json --out data/raw/synth-0001` exit 0
+  (the out-dir must be the session dir and follow the `synth-0001` naming so `process` accepts
+  it — constraint 3), then `validate`/`process data/raw/synth-0001` exit 0. Proves the
+  real-hardware entry path threads. (Reuses the exact fixture the XDF round-trip unit tests
+  use.)
 
 ## Error Handling
 
