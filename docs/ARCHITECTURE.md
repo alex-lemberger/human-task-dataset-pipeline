@@ -50,6 +50,26 @@ htdp catalog    <sessions_dir> <out.parquet>
 htdp catalog-releases <releases_dir> <out.parquet>
 ```
 
+
+## End-to-end integration testing
+
+`tests/test_integration_pipeline.py` threads the whole pipeline end-to-end through the CLI,
+covering stages from `synth` through `package`, `catalog`, and export. Three CLI-level
+constraints it encodes:
+
+1. **Cwd-anchored `data/` directory** — `process` and `package` use `data/raw`,
+   `data/processed`, and `data/releases` relative to the working directory; tests must run
+   inside a controlled filesystem root (e.g. `tmp_path`).
+2. **Consent edits before re-checksumming** — `ingest-video` rewrites `device_config.json`
+   and `checksums.sha256` of an existing raw session. Consent modifications must precede
+   this step, otherwise `validate` fails on a checksum mismatch.
+3. **Session directory naming** — `process` parses the session number from the directory
+   name (e.g. `synth-0001`). Raw session directories must follow this convention.
+
+Optional-extra stages (`replay-ik`, `export-release-rosbag`, XDF `ingest`) are gated
+behind `pytest.importorskip` so they run when their extra dependencies are installed and
+skip cleanly otherwise.
+
 ## IK robot-arm replay
 
 `htdp replay-ik` drives a vendored 6-DOF arm (`src/htdp/replay/assets/arm.xml`) so its
