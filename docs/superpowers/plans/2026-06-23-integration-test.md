@@ -4,7 +4,7 @@
 
 **Goal:** Add a CLI-level end-to-end test that threads the whole pipeline and asserts the cross-slice properties no unit test covers, plus gated segments for the optional-extra stages.
 
-**Architecture:** One new test module `tests/test_integration_pipeline.py` driving the real `htdp` commands through `typer.testing.CliRunner` inside `runner.isolated_filesystem()` (so the CLI's hardcoded `data/` paths resolve). A base-env core test always runs; `importorskip`-gated tests cover `replay-ik`, `export-release-rosbag`, and the XDF `ingest` entry. No production code change; one small docs note.
+**Architecture:** One new test module `tests/test_integration_pipeline.py` driving the real `htdp` commands through `typer.testing.CliRunner`, with each test switching cwd via pytest `monkeypatch.chdir(tmp_path)` (so the CLI's hardcoded `data/` paths resolve; typer's CliRunner has no `isolated_filesystem`). A base-env core test always runs; `importorskip`-gated tests cover `replay-ik`, `export-release-rosbag`, and the XDF `ingest` entry. No production code change; one small docs note.
 
 **Tech Stack:** Python, typer CliRunner, pytest. Optional extras: mink (replay), rosbags (rosbag), pyxdf (ingest).
 
@@ -75,34 +75,34 @@ def test_full_pipeline_cli(tmp_path, monkeypatch):
     runner = CliRunner()
     _build_core_release(runner)
 
-        for sid in ["synth-0001", "synth-0002"]:
-            _run(runner, "validate", f"data/raw/{sid}")
-            _run(runner, "process", f"data/raw/{sid}")
-            _run(runner, "qc", f"data/processed/{sid}")
+    for sid in ["synth-0001", "synth-0002"]:
+        _run(runner, "validate", f"data/raw/{sid}")
+        _run(runner, "process", f"data/raw/{sid}")
+        _run(runner, "qc", f"data/processed/{sid}")
 
-        # per-session consent survived into the packaged release
-        assert Path("data/releases/rel/data/synth-0001/video/cam0.mp4").exists()
-        assert not Path("data/releases/rel/data/synth-0002/video/cam0.mp4").exists()
-        man = json.loads(Path("data/releases/rel/manifest.json").read_text(encoding="utf-8"))
-        assert man["absent_modalities_by_session"] == {
-            "synth-0001": ["eeg"],
-            "synth-0002": ["eeg", "video"],
-        }
-        assert man["absent_modalities"] == ["eeg"]
+    # per-session consent survived into the packaged release
+    assert Path("data/releases/rel/data/synth-0001/video/cam0.mp4").exists()
+    assert not Path("data/releases/rel/data/synth-0002/video/cam0.mp4").exists()
+    man = json.loads(Path("data/releases/rel/manifest.json").read_text(encoding="utf-8"))
+    assert man["absent_modalities_by_session"] == {
+        "synth-0001": ["eeg"],
+        "synth-0002": ["eeg", "video"],
+    }
+    assert man["absent_modalities"] == ["eeg"]
 
-        # catalogs
-        _run(runner, "catalog", "data/raw", "sess.parquet")
-        _run(runner, "catalog-releases", "data/releases", "rel.parquet")
-        q = _run(runner, "catalog-query", "sess.parquet", "--modality", "video")
-        # grain consistency: the catalog reflects RAW device_config (both sessions carry the
-        # video StreamRef), even though the release dropped video for synth-0002 by consent.
-        assert sorted(q.output.split()) == ["synth-0001", "synth-0002"]
+    # catalogs
+    _run(runner, "catalog", "data/raw", "sess.parquet")
+    _run(runner, "catalog-releases", "data/releases", "rel.parquet")
+    q = _run(runner, "catalog-query", "sess.parquet", "--modality", "video")
+    # grain consistency: the catalog reflects RAW device_config (both sessions carry the
+    # video StreamRef), even though the release dropped video for synth-0002 by consent.
+    assert sorted(q.output.split()) == ["synth-0001", "synth-0002"]
 
-        # release-level BIDS export carries both subjects
-        _run(runner, "export-release-bids", "data/releases/rel", "bids_out")
-        assert Path("bids_out/dataset_description.json").exists()
-        subs = sorted(p.name for p in Path("bids_out").glob("sub-*"))
-        assert subs == ["sub-p0001", "sub-p0002"]
+    # release-level BIDS export carries both subjects
+    _run(runner, "export-release-bids", "data/releases/rel", "bids_out")
+    assert Path("bids_out/dataset_description.json").exists()
+    subs = sorted(p.name for p in Path("bids_out").glob("sub-*"))
+    assert subs == ["sub-p0001", "sub-p0002"]
 ```
 
 - [ ] **Step 2: Run the core test (base env)**
@@ -137,42 +137,42 @@ git commit -m "test: end-to-end CLI pipeline integration test"
 Append to `tests/test_integration_pipeline.py`:
 
 ```python
-def test_pipeline_replay_ik():
+def test_pipeline_replay_ik(tmp_path, monkeypatch):
     pytest.importorskip("mink")
+    monkeypatch.chdir(tmp_path)
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        _build_core_release(runner)
-        _run(runner, "replay-ik", "data/releases/rel", "--max-steps", "10", "--out", "traj.csv")
-        assert Path("traj.csv").exists()
-        assert Path("traj.csv").read_text(encoding="utf-8").splitlines()[0].startswith("timestamp_s")
+    _build_core_release(runner)
+    _run(runner, "replay-ik", "data/releases/rel", "--max-steps", "10", "--out", "traj.csv")
+    assert Path("traj.csv").exists()
+    assert Path("traj.csv").read_text(encoding="utf-8").splitlines()[0].startswith("timestamp_s")
 
 
-def test_pipeline_rosbag():
+def test_pipeline_rosbag(tmp_path, monkeypatch):
     pytest.importorskip("rosbags")
+    monkeypatch.chdir(tmp_path)
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        _build_core_release(runner)
-        _run(runner, "export-release-rosbag", "data/releases/rel", "rosbag_out")
-        bag_dirs = [p for p in Path("rosbag_out").iterdir() if p.is_dir()]
-        assert bag_dirs  # at least one per-session bag directory
+    _build_core_release(runner)
+    _run(runner, "export-release-rosbag", "data/releases/rel", "rosbag_out")
+    bag_dirs = [p for p in Path("rosbag_out").iterdir() if p.is_dir()]
+    assert bag_dirs  # at least one per-session bag directory
 
 
-def test_pipeline_xdf_ingest():
+def test_pipeline_xdf_ingest(tmp_path, monkeypatch):
     pytest.importorskip("pyxdf")
     from tests._xdf_writer import build_sidecar, write_xdf
 
+    monkeypatch.chdir(tmp_path)
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        _run(runner, "synth", "--out", "src", "--seed", "1")
-        write_xdf(Path("src/synth-0001"), Path("s.xdf"))
-        Path("ingest.json").write_text(
-            json.dumps(build_sidecar(Path("src/synth-0001"))), encoding="utf-8"
-        )
-        # out-dir must be the session dir, named like synth-0001 (process parses an int
-        # from the dir name).
-        _run(runner, "ingest", "s.xdf", "ingest.json", "--out", "data/raw/synth-0001")
-        _run(runner, "validate", "data/raw/synth-0001")
-        _run(runner, "process", "data/raw/synth-0001")
+    _run(runner, "synth", "--out", "src", "--seed", "1")
+    write_xdf(Path("src/synth-0001"), Path("s.xdf"))
+    Path("ingest.json").write_text(
+        json.dumps(build_sidecar(Path("src/synth-0001"))), encoding="utf-8"
+    )
+    # out-dir must be the session dir, named like synth-0001 (process parses an int
+    # from the dir name).
+    _run(runner, "ingest", "s.xdf", "ingest.json", "--out", "data/raw/synth-0001")
+    _run(runner, "validate", "data/raw/synth-0001")
+    _run(runner, "process", "data/raw/synth-0001")
 ```
 
 - [ ] **Step 2: Run the gated tests with all extras synced (they MUST run, not skip)**
