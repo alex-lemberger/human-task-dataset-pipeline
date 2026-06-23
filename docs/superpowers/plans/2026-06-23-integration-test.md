@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Test-only slice — NO production code change, no new dependency, no schema change.
-- Drive the pipeline at CLI level via `CliRunner`; run inside `runner.isolated_filesystem()` because `process`/`package` hardcode cwd-relative `data/raw`, `data/processed`, `data/releases`.
+- Drive the pipeline at CLI level via `CliRunner`; switch cwd with pytest `monkeypatch.chdir(tmp_path)` (typer's CliRunner has NO `isolated_filesystem`) because `process`/`package` hardcode cwd-relative `data/raw`, `data/processed`, `data/releases`. Each test takes `(tmp_path, monkeypatch)`.
 - The core test is base-env and MUST run (never gated) — a missing extra must never hide a core regression.
 - Each optional stage is its own `pytest.importorskip(...)` test: `mink` → replay-ik, `rosbags` → rosbag, `pyxdf` → ingest.
 - Three verified ordering/naming constraints the test must honor: (1) cwd-anchored `data/`; (2) consent edits BEFORE `ingest-video` (which re-checksums) or `validate` fails on checksum mismatch; (3) `ingest --out` dir must be the session dir named `data/raw/synth-0001` (`process` parses an int from the dir name).
@@ -70,10 +70,10 @@ def _build_core_release(runner: CliRunner) -> None:
     )
 
 
-def test_full_pipeline_cli():
+def test_full_pipeline_cli(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        _build_core_release(runner)
+    _build_core_release(runner)
 
         for sid in ["synth-0001", "synth-0002"]:
             _run(runner, "validate", f"data/raw/{sid}")
