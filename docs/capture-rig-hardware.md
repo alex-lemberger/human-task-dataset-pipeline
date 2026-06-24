@@ -74,9 +74,18 @@ motion-capture-grade path for exactly the code in flight.
 2. **Base-station placement:** 2 stations diagonally opposite, ~2 m high, angled down →
    ~3×3 m capture volume with occlusion resistance. 1 station only covers a small
    frontal zone.
-3. **PC needs SteamVR (Windows).** This is the box the `OpenVRPoseSource` live mile runs
-   on — `openvr.init()` executes there, not on the dev Mac (where `import openvr` fails:
-   x86_64-only dylib). See the OpenVR plan/spec in `docs/superpowers/`.
+3. **Live-capture platform = Windows or Linux, NEVER macOS.** The constraint is SteamVR,
+   not our code (`htdp-capture` is Python + pylsl + openvr, cross-platform):
+   - **Windows** — full, proven SteamVR support. Recommended (least friction). Lighthouse +
+     Tracker 3.0 + dongles just work; headless via null-driver (no HMD).
+   - **Linux** — SteamVR Linux build + pyopenvr work (less polished, viable).
+   - **macOS** — dead: Valve discontinued SteamVR for macOS (~2020), never Apple Silicon,
+     and the `openvr` wheel ships an x86-only dylib → `import openvr` crashes on arm64
+     (exactly why `OpenVRPoseSource` lazy-imports openvr only in the real-init branch).
+   So: dev/test on the Mac hardware-free (fake system); `openvr.init()` live capture runs
+   on a **Windows (or Linux) box** with SteamVR installed, USB for the tracker dongles, and
+   `uv sync --extra openvr`. The `192.168.2.53` box can double as the capture PC if it's
+   Windows + has USB + SteamVR. See the OpenVR plan/spec in `docs/superpowers/`.
 
 ## Related
 
