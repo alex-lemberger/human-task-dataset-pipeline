@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-TASK_SCENE_XML = Path(__file__).parent / "assets" / "so_arm100" / "task_scene.xml"
+TASK_SCENE_XML = Path(__file__).parent / "assets" / "franka" / "task_scene.xml"
 OBJECT_BODY = "cube"
 OBJECT_FREEJOINT = "cube_free"
 TARGET_SITE = "target"

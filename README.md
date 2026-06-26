@@ -46,15 +46,16 @@ htdp replay    data/releases/<name>                        # MuJoCo mocap-body r
 htdp replay-ik data/releases/<name> --out traj.csv --orientation-cost 1.0  # IK on a 6-DOF arm
 
 # --- teleop-replay demo (M1) ---
-htdp sim-task --video docs/demo/m1_pick_place.mp4          # human-motion -> SO-ARM100 pick-and-place
+htdp sim-task --video docs/demo/m1_pick_place.mp4          # human-motion -> Franka Panda pick-and-place
 ```
 
 ## Teleop-replay demo (M1)
 
 `htdp sim-task` closes the loop in simulation: a recorded wrist trajectory is retargeted
-through differential IK onto a real **SO-ARM100** model in MuJoCo, which picks up an object
-and places it on a target — the teleoperation-style data-collection paradigm (ALOHA / GELLO /
-LeRobot), driven by human motion. Headless and deterministic; `--video` renders an MP4.
+through differential IK onto a **Franka Emika Panda** arm in MuJoCo, which picks up an object
+top-down and places it on a target — the teleoperation-style data-collection paradigm
+(ALOHA / GELLO / LeRobot), driven by human motion. Headless and deterministic; `--video`
+renders an MP4.
 
 ![M1 pick-and-place demo](docs/demo/m1_pick_place.mp4)
 

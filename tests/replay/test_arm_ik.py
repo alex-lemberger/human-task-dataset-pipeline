@@ -7,11 +7,11 @@ from htdp.replay.arm_ik import solve_arm_ik
 
 
 def _line(n=20):
-    # a short reachable Cartesian path in the SO-ARM100 workspace (metres).
-    # The arm reaches out along -y (EEF home ~ (0, -0.41, 0.12)), so targets sit
-    # near y=-0.30 with small x and z in [0.12, 0.18]. tuple = (t, x, y, z, qw,qx,qy,qz).
+    # a short reachable Cartesian path in the Franka workspace (metres). The arm picks on a
+    # table ~0.5 m in front of the base; targets sit near (0.5, 0, z) with z in [0.25, 0.35].
+    # tuple = (t, x, y, z, qw, qx, qy, qz).
     return [
-        (0.04 * i, -0.05 + 0.006 * i, -0.30, 0.12 + 0.003 * i, 1.0, 0.0, 0.0, 0.0) for i in range(n)
+        (0.04 * i, 0.50, -0.10 + 0.01 * i, 0.35 - 0.005 * i, 1.0, 0.0, 0.0, 0.0) for i in range(n)
     ]
 
 

@@ -224,7 +224,10 @@ def sim_task(
     except FileExistsError as exc:
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(f"place_error_m={result.place_error:.4f} frames={result.frames_stepped}")
+    typer.echo(
+        f"place_error_m={result.place_error:.4f} grasp_dist_m={result.grasp_dist:.4f} "
+        f"frames={result.frames_stepped}"
+    )
     if video is not None:
         typer.echo(f"wrote {video}")
 

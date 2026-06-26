@@ -51,10 +51,13 @@ robot** demo over a large dataset. EEG / VR-rig / platform work is frozen; the h
 teleop-replay on a real robot model.
 
 **M1 — done:** `htdp sim-task` retargets a recorded wrist trajectory through differential IK
-onto a vendored **SO-ARM100** (MuJoCo Menagerie) model, which picks an object and places it
-on a target. Headless, deterministic (`place_error_m=0.0000`), `--video` renders an MP4
-(`docs/demo/m1_pick_place.mp4`). Grasp is a kinematic attach; collision bitmasks keep the
-rigid jaw from disturbing the object pre-grasp.
+onto a vendored **Franka Emika Panda** (MuJoCo Menagerie) 7-DOF arm, which picks an object
+top-down and places it on a target. Headless, deterministic (`place_error_m=0.0000`,
+`grasp_dist_m=0.0001`), `--video` renders an MP4 (`docs/demo/m1_pick_place.mp4`). IK tracks a
+grasp site between the fingertips; the full waypoint path is solved as one warm-started
+continuation (no per-waypoint reset). Grasp is a kinematic attach; collision bitmasks keep the
+gripper from disturbing the object pre-grasp. (The original SO-ARM100 was dropped: its 5 DOF
+cannot orient a gripper top-down at a tabletop target — see git history.)
 
 **M2 — next:** collect demos in the M1 sim, export a LeRobot-compatible dataset, train an
 imitation-learning policy, run the task autonomously, report success rate vs the IK baseline.
