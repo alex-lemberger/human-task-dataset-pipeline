@@ -23,23 +23,21 @@ class EpisodeResult:
     qpos_trace: list[list[float]]
 
 
-def _waypoints(model):  # type: ignore[no-untyped-def]
-    # Cartesian path keyed off cube + target positions; (x, y, z, grasp_active).
-    cube = model.body(OBJECT_BODY).pos
-    tgt = model.site(TARGET_SITE).pos
+def _waypoints(cube, tgt):  # type: ignore[no-untyped-def]
+    # Cartesian path keyed off the live cube + target positions; (x, y, z, grasp_active).
     return [
         (cube[0], cube[1], _Z_HI, False),  # approach above cube
         (cube[0], cube[1], _Z_LO, False),  # descend to cube
-        (cube[0], cube[1], _Z_LO, True),  # grasp (weld on)
+        (cube[0], cube[1], _Z_LO, True),  # grasp (attach on)
         (cube[0], cube[1], _Z_HI, True),  # lift
         (tgt[0], tgt[1], _Z_HI, True),  # traverse to target
         (tgt[0], tgt[1], _Z_LO, True),  # descend to target
-        (tgt[0], tgt[1], _Z_LO, False),  # release (weld off)
+        (tgt[0], tgt[1], _Z_LO, False),  # release (attach off)
         (tgt[0], tgt[1], _Z_HI, False),  # retreat
     ]
 
 
-def run_episode(*, interp: int = 25, settle: int = 6, seed: int = 0, on_step=None) -> EpisodeResult:  # type: ignore[no-untyped-def]
+def run_episode(*, interp: int = 25, settle: int = 6, seed: int = 0, cube_xy=None, on_step=None) -> EpisodeResult:  # type: ignore[no-untyped-def]
     try:
         import mujoco  # type: ignore[import-not-found]
         import numpy as np
@@ -48,15 +46,20 @@ def run_episode(*, interp: int = 25, settle: int = 6, seed: int = 0, on_step=Non
 
     model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_XML))
     data = mujoco.MjData(model)
-    mujoco.mj_forward(model, data)
-
     grasp_sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, GRASP_SITE)
     cube_jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, OBJECT_FREEJOINT)
     cube_qadr = int(model.jnt_qposadr[cube_jid])
     cube_vadr = int(model.jnt_dofadr[cube_jid])
+    mujoco.mj_forward(model, data)
+
+    if cube_xy is not None:
+        data.qpos[cube_qadr : cube_qadr + 2] = cube_xy
+        mujoco.mj_forward(model, data)
 
     start_xy = (float(data.body(OBJECT_BODY).xpos[0]), float(data.body(OBJECT_BODY).xpos[1]))
-    waypoints = _waypoints(model)  # type: ignore[no-untyped-call]
+    cube_pos = data.body(OBJECT_BODY).xpos.copy()
+    tgt_pos = model.site(TARGET_SITE).pos
+    waypoints = _waypoints(cube_pos, tgt_pos)  # type: ignore[no-untyped-call]
 
     # Densely interpolate the Cartesian keyframes, then solve the WHOLE path in one IK call.
     # solve_arm_ik warm-starts each sample from the previous solution, so the arm tracks a
@@ -104,7 +107,7 @@ def run_episode(*, interp: int = 25, settle: int = 6, seed: int = 0, on_step=Non
                 grasp_offset["v"] = None
             mujoco.mj_step(model, data)
             if on_step is not None:
-                on_step(data, frames)
+                on_step(data, frames, grasp)
             frames += 1
         if (step + 1) % interp == 0:  # snapshot at each keyframe
             qtrace.append([float(q) for q in data.qpos])

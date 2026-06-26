@@ -27,7 +27,7 @@ def render_episode(out_path: Path, *, fps: int = 30, every: int = 10, force: boo
     renderer = mujoco.Renderer(model, height=480, width=640)
     frames: list[np.ndarray] = []
 
-    def on_step(data, step_index):  # type: ignore[no-untyped-def]
+    def on_step(data, step_index, grasp_active):  # type: ignore[no-untyped-def]
         if step_index % every == 0:
             renderer.update_scene(data)
             frames.append(renderer.render())
