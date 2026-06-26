@@ -38,7 +38,7 @@ def _waypoints(model):  # type: ignore[no-untyped-def]
     ]
 
 
-def run_episode(*, interp: int = 25, settle: int = 6, seed: int = 0) -> EpisodeResult:
+def run_episode(*, interp: int = 25, settle: int = 6, seed: int = 0, on_step=None) -> EpisodeResult:  # type: ignore[no-untyped-def]
     try:
         import mujoco  # type: ignore[import-not-found]
         import numpy as np
@@ -77,6 +77,8 @@ def run_episode(*, interp: int = 25, settle: int = 6, seed: int = 0) -> EpisodeR
             else:
                 grasp_offset["v"] = None
             mujoco.mj_step(model, data)
+            if on_step is not None:
+                on_step(data, frames)
             frames += 1
 
     start_xy = (float(data.body(OBJECT_BODY).xpos[0]), float(data.body(OBJECT_BODY).xpos[1]))
