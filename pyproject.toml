@@ -26,7 +26,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/htdp"]
-artifacts = ["src/htdp/qc/templates/*.j2", "src/htdp/replay/assets/*.xml"]
+artifacts = ["src/htdp/qc/templates/*.j2", "src/htdp/replay/assets/*.xml", "src/htdp/replay/assets/so_arm100/**/*"]
 
 [tool.ruff]
 line-length = 100
@@ -38,6 +38,18 @@ line-ending = "lf"
 [tool.mypy]
 python_version = "3.11"
 strict = true
+
+[[tool.mypy.overrides]]
+module = "mujoco"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "htdp.replay.*"
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = "mink.*"
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "rosbags.*"
