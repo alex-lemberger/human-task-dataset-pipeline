@@ -29,8 +29,11 @@ def solve_arm_ik(pose, *, ik_iters: int = 10) -> ArmIkResult:  # type: ignore[no
     cfg = mink.Configuration(model)
     cfg.update(data.qpos)
     task = mink.FrameTask(
-        frame_name=EEF_BODY, frame_type="body",
-        position_cost=1.0, orientation_cost=0.0, lm_damping=1.0,
+        frame_name=EEF_BODY,
+        frame_type="body",
+        position_cost=1.0,
+        orientation_cost=0.0,
+        lm_damping=1.0,
     )
     limits = [mink.ConfigurationLimit(model)]
     eid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, EEF_BODY)
@@ -51,6 +54,8 @@ def solve_arm_ik(pose, *, ik_iters: int = 10) -> ArmIkResult:  # type: ignore[no
         mujoco.mj_forward(model, cfg.data)
         traj.append([float(q) for q in cfg.data.qpos])
         err = float(np.linalg.norm(cfg.data.xpos[eid] - target))
-        ts.append(float(t)); targets.append((float(x), float(y), float(z))); errors.append(err)
+        ts.append(float(t))
+        targets.append((float(x), float(y), float(z)))
+        errors.append(err)
         max_error = max(max_error, err)
     return ArmIkResult(traj, ts, targets, errors, max_error)
