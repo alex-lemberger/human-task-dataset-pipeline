@@ -9,8 +9,8 @@ SETUP (run once, before Task 1):
   1. cd /Users/alexanderlemberger/human-task-dataset-pipeline
   2. uv sync --extra replay --extra dev
   3. git status  --> MUST be clean. If anything is modified/staged/untracked, STOP and report.
-  4. Import smoke-check the optional deps:
-       uv run --extra replay python -c "import mujoco, mink, daqp, imageio.v3; print('DEPS-OK')"
+  4. Import smoke-check the optional deps (NOT imageio — it is added later by Task 5 Step 1):
+       uv run --extra replay python -c "import mujoco, mink, daqp; print('DEPS-OK')"
      MUST print DEPS-OK. If any ImportError, STOP and report (do not pip/uv add anything else).
 
 EXECUTION RULES:
