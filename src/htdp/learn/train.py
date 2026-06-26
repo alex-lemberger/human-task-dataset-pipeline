@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -17,7 +18,7 @@ def pick_device() -> str:
 
 
 class Normalizer:
-    def __init__(self, stats: dict) -> None:
+    def __init__(self, stats: dict[str, Any]) -> None:
         self.obs_mean = np.array(stats["observation.state"]["mean"], dtype=np.float32)
         self.obs_std = np.array(stats["observation.state"]["std"], dtype=np.float32)
         self.act_mean = np.array(stats["action"]["mean"], dtype=np.float32)
@@ -86,7 +87,7 @@ def train(
         bi = torch.as_tensor(idx, device=device)
         opt.zero_grad()
         loss = torch.nn.functional.l1_loss(net(obs[bi]), tgt[bi])
-        loss.backward()
+        loss.backward()  # type: ignore[no-untyped-call]
         opt.step()
 
     out_path = Path(out_path)

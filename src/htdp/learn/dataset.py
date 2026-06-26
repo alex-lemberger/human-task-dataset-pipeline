@@ -29,7 +29,9 @@ def sample_cube_positions(n: int, seed: int) -> list[tuple[float, float]]:
     return [(float(x), float(y)) for x, y in zip(xs, ys)]
 
 
-def _record_episode(cube_xy, ep_index, index_start, fps):  # type: ignore[no-untyped-def]
+def _record_episode(
+    cube_xy: tuple[float, float], ep_index: int, index_start: int, fps: int
+) -> list[dict[str, object]]:
     """Run the scripted teacher once; return a list of row dicts, one per waypoint step."""
     import mujoco
 
@@ -39,7 +41,7 @@ def _record_episode(cube_xy, ep_index, index_start, fps):  # type: ignore[no-unt
     model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_XML))
     grasp_sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
 
-    rows: list[dict] = []
+    rows: list[dict[str, object]] = []
 
     def on_step(data, frame, grasp):  # type: ignore[no-untyped-def]
         if frame % _SETTLE != _SETTLE - 1:
@@ -62,7 +64,7 @@ def _record_episode(cube_xy, ep_index, index_start, fps):  # type: ignore[no-unt
     return rows
 
 
-def _feature_stats(values: np.ndarray) -> dict:
+def _feature_stats(values: np.ndarray) -> dict[str, list[float]]:
     return {
         "mean": values.mean(0).tolist(),
         "std": (values.std(0) + 1e-6).tolist(),
@@ -89,8 +91,8 @@ def generate_demos(
     test_pos = sample_cube_positions(n_test, seed + 1000)
 
     episodes_meta = []
-    all_obs: list[list[float]] = []
-    all_act: list[list[float]] = []
+    all_obs: list[object] = []
+    all_act: list[object] = []
     index = 0
     for ep, cube_xy in enumerate(train_pos):
         rows = _record_episode(cube_xy, ep, index, fps)

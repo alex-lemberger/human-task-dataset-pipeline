@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -38,7 +39,7 @@ class ACTPolicy(nn.Module):
         memory = self.obs_embed(obs).unsqueeze(1)  # (B, 1, H)
         tgt = self.queries.unsqueeze(0).expand(b, -1, -1)  # (B, chunk, H)
         dec = self.decoder(tgt, memory)  # (B, chunk, H)
-        return self.head(dec)  # (B, chunk, action_dim)
+        return cast(Tensor, self.head(dec))  # (B, chunk, action_dim)
 
     @torch.no_grad()
     def act(self, obs: Tensor) -> Tensor:
