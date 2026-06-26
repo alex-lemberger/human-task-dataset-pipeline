@@ -17,6 +17,7 @@ def render_episode(out_path: Path, *, fps: int = 30, every: int = 10, force: boo
     try:
         import imageio.v3 as iio  # type: ignore[import-not-found]
         import mujoco  # type: ignore[import-not-found]
+        import numpy as np
     except ModuleNotFoundError as exc:
         raise IkUnavailable("install with: uv sync --extra replay") from exc
 
@@ -24,7 +25,7 @@ def render_episode(out_path: Path, *, fps: int = 30, every: int = 10, force: boo
 
     model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_XML))
     renderer = mujoco.Renderer(model, height=480, width=640)
-    frames: list[object] = []
+    frames: list[np.ndarray] = []
 
     def on_step(data, step_index):  # type: ignore[no-untyped-def]
         if step_index % every == 0:
