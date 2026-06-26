@@ -43,6 +43,24 @@ pipeline (validate → process → qc → package) must not change.
 
 ---
 
+## Portfolio re-scope — M1: sim loop (done)
+
+Per the 2026-06-26 re-scope (`docs/superpowers/specs/2026-06-26-portfolio-rescope-sim-loop-design.md`),
+the project is re-aimed at a robotics-engineering portfolio: a working **human-motion →
+robot** demo over a large dataset. EEG / VR-rig / platform work is frozen; the headline is
+teleop-replay on a real robot model.
+
+**M1 — done:** `htdp sim-task` retargets a recorded wrist trajectory through differential IK
+onto a vendored **SO-ARM100** (MuJoCo Menagerie) model, which picks an object and places it
+on a target. Headless, deterministic (`place_error_m=0.0000`), `--video` renders an MP4
+(`docs/demo/m1_pick_place.mp4`). Grasp is a kinematic attach; collision bitmasks keep the
+rigid jaw from disturbing the object pre-grasp.
+
+**M2 — next:** collect demos in the M1 sim, export a LeRobot-compatible dataset, train an
+imitation-learning policy, run the task autonomously, report success rate vs the IK baseline.
+
+---
+
 ## Out of scope (named, not forgotten)
 
 The following were considered and explicitly deferred — not missed:

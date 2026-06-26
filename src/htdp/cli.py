@@ -203,6 +203,32 @@ def replay_ik(
         typer.echo(f"wrote {written} ({len(result.joint_trajectory)} steps)")
 
 
+@app.command(name="sim-task")
+def sim_task(
+    video: Path | None = typer.Option(None, "--video", help="write demo MP4 to this path"),
+    force: bool = typer.Option(False, "--force", help="overwrite an existing video"),
+) -> None:
+    """Run the SO-ARM100 pick-and-place sim episode; print metrics, optionally render."""
+    from htdp.replay.episode import run_episode
+    from htdp.replay.ik import IkUnavailable
+
+    try:
+        result = run_episode()
+        if video is not None:
+            from htdp.replay.render import render_episode
+
+            render_episode(video, force=force)
+    except IkUnavailable as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    except FileExistsError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"place_error_m={result.place_error:.4f} frames={result.frames_stepped}")
+    if video is not None:
+        typer.echo(f"wrote {video}")
+
+
 @app.command()
 def catalog(sessions_dir: Path, out_path: Path) -> None:
     """Build a multi-session Parquet catalog from a raw sessions directory."""
