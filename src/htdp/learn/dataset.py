@@ -29,8 +29,8 @@ def sample_cube_positions(n: int, seed: int) -> list[tuple[float, float]]:
     return [(float(x), float(y)) for x, y in zip(xs, ys)]
 
 
-def _record_episode(cube_xy, ep_index, index_start):  # type: ignore[no-untyped-def]
-    """Run the scripted teacher once; return (rows, n_frames). One row per waypoint step."""
+def _record_episode(cube_xy, ep_index, index_start, fps):  # type: ignore[no-untyped-def]
+    """Run the scripted teacher once; return a list of row dicts, one per waypoint step."""
     import mujoco
 
     from htdp.replay.episode import run_episode
@@ -49,7 +49,7 @@ def _record_episode(cube_xy, ep_index, index_start):  # type: ignore[no-untyped-
             {
                 "observation.state": build_observation(model, data, grasp_sid).tolist(),
                 "action": build_action(data, grasp).tolist(),
-                "timestamp": fi / 25.0,
+                "timestamp": fi / fps,
                 "frame_index": fi,
                 "episode_index": ep_index,
                 "index": index_start + fi,
@@ -93,7 +93,7 @@ def generate_demos(
     all_act: list[list[float]] = []
     index = 0
     for ep, cube_xy in enumerate(train_pos):
-        rows = _record_episode(cube_xy, ep, index)
+        rows = _record_episode(cube_xy, ep, index, fps)
         index += len(rows)
         pl.DataFrame(rows).write_parquet(data_dir / f"episode_{ep:06d}.parquet")
         episodes_meta.append({"episode_index": ep, "length": len(rows), "task": _TASK})
