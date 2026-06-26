@@ -22,11 +22,16 @@
 
     <!-- Pick-and-place table + props sit in the SO-ARM100 reachable zone (y ~ -0.32, z in
          [0.04, 0.18]); the arm extends along -y with EEF home ~ (0, -0.41, 0.12). -->
-    <geom name="table" type="box" pos="0.0 -0.32 0.04" size="0.16 0.12 0.02" rgba="0.8 0.8 0.8 1"/>
+    <!-- Collision bitmasks isolate the cube to the table only: the cube lives on bit 1, the
+         table bridges bits 0+1, the arm stays on bit 0. So the cube rests on the table but the
+         rigid jaw never knocks it during approach — the weld does the grasping. -->
+    <geom name="table" type="box" pos="0.0 -0.32 0.04" size="0.16 0.12 0.02" rgba="0.8 0.8 0.8 1"
+      contype="1" conaffinity="3"/>
 
     <body name="cube" pos="-0.06 -0.32 0.075">
       <freejoint name="cube_free"/>
-      <geom name="cube_geom" type="box" size="0.015 0.015 0.015" rgba="0.9 0.3 0.2 1" mass="0.02"/>
+      <geom name="cube_geom" type="box" size="0.015 0.015 0.015" rgba="0.9 0.3 0.2 1" mass="0.02"
+        contype="2" conaffinity="2"/>
     </body>
 
     <site name="target" pos="0.06 -0.32 0.062" size="0.02" rgba="0.2 0.8 0.2 0.5"/>
