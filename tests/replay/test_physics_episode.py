@@ -35,3 +35,11 @@ def test_friction_grasp_lifts_cube():
 
     res = run_physics_episode(cube_xy=(0.50, -0.15))
     assert res.lifted, "cube was not lifted by the friction grasp"
+
+
+def test_physics_pick_and_place_succeeds():
+    from htdp.replay.physics_episode import run_physics_episode
+
+    res = run_physics_episode(cube_xy=(0.50, -0.15))
+    assert res.lifted
+    assert res.place_error < 0.05, f"place_error {res.place_error:.3f} m too high"

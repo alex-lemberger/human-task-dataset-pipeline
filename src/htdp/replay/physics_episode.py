@@ -61,7 +61,6 @@ def run_physics_episode(  # type: ignore[no-untyped-def]
     import numpy as np
 
     from htdp.replay.arm_ik import solve_arm_ik
-    from htdp.replay.franka import GRASP_SITE  # noqa: F401
     from htdp.replay.scene import OBJECT_BODY, OBJECT_FREEJOINT, TARGET_SITE, TASK_SCENE_PHYSICS_XML
 
     model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
@@ -87,8 +86,9 @@ def run_physics_episode(  # type: ignore[no-untyped-def]
     # Interpolate Cartesian keyframes; solve the whole path in one warm-started IK call.
     path: list[tuple[float, float, float, float, float, float, float, float]] = []
     grip_closed: list[bool] = []
-    prev = _grasp_waypoints(cube_pos, tgt_pos)[0][:3]
-    for x, y, z, closed in _grasp_waypoints(cube_pos, tgt_pos):
+    waypoints = _grasp_waypoints(cube_pos, tgt_pos)  # type: ignore[no-untyped-call]
+    prev = waypoints[0][:3]
+    for x, y, z, closed in waypoints:
         for k in range(1, interp + 1):
             f = k / interp
             px = prev[0] + (x - prev[0]) * f
@@ -112,7 +112,7 @@ def run_physics_episode(  # type: ignore[no-untyped-def]
         for _ in range(n):
             mujoco.mj_step(model, data)
             frames += 1
-            if float(data.body(OBJECT_BODY).xpos[2]) > start_z + 0.05:
+            if not lifted and float(data.body(OBJECT_BODY).xpos[2]) > start_z + 0.05:
                 lifted = True
         prev_closed = closed
 
