@@ -232,6 +232,53 @@ def sim_task(
         typer.echo(f"wrote {video}")
 
 
+@app.command(name="gen-demos")
+def gen_demos(
+    out: Path = typer.Option(..., "--out", help="dataset output directory"),
+    n_train: int = typer.Option(100, "--n-train"),
+    n_test: int = typer.Option(25, "--n-test"),
+    seed: int = typer.Option(0, "--seed"),
+) -> None:
+    """Generate randomized scripted pick-place demos in LeRobotDataset format."""
+    from htdp.learn.dataset import generate_demos
+
+    generate_demos(out, n_train=n_train, n_test=n_test, seed=seed)
+    typer.echo(f"wrote demos to {out} (train={n_train} test={n_test})")
+
+
+@app.command(name="train-policy")
+def train_policy(
+    demos: Path = typer.Option(..., "--demos", help="dataset directory from gen-demos"),
+    out: Path = typer.Option(..., "--out", help="checkpoint path (policy.pt)"),
+    steps: int = typer.Option(3000, "--steps"),
+) -> None:
+    """Train the ACT imitation policy on generated demos."""
+    from htdp.learn.train import pick_device, train
+
+    train(demos, out, steps=steps)
+    typer.echo(f"trained on {pick_device()}; wrote {out}")
+
+
+@app.command(name="eval-policy")
+def eval_policy(
+    demos: Path = typer.Option(..., "--demos", help="dataset dir (for test_positions.json)"),
+    policy: Path = typer.Option(..., "--policy", help="checkpoint path"),
+    out: Path | None = typer.Option(None, "--out", help="optional report JSON path"),
+) -> None:
+    """Roll out the policy on held-out positions; report success-rate vs scripted baseline."""
+    import json
+
+    from htdp.learn.eval import evaluate
+
+    positions = [tuple(p) for p in json.loads((demos / "meta" / "test_positions.json").read_text())]
+    report = evaluate(policy, positions, out_path=out)
+    p, b = report["policy"], report["baseline"]
+    typer.echo(
+        f"policy: success={p['success_rate']:.2f} place_err={p['mean_place_error']:.4f} | "
+        f"baseline: success={b['success_rate']:.2f} place_err={b['mean_place_error']:.4f}"
+    )
+
+
 @app.command()
 def catalog(sessions_dir: Path, out_path: Path) -> None:
     """Build a multi-session Parquet catalog from a raw sessions directory."""
