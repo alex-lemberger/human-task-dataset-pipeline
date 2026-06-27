@@ -242,12 +242,12 @@ def gen_demos(
     """Generate randomized scripted pick-place demos in LeRobotDataset format."""
     try:
         from htdp.learn.dataset import generate_demos
-    except ImportError as exc:
+
+        generate_demos(out, n_train=n_train, n_test=n_test, seed=seed)
+    except (ImportError, ModuleNotFoundError) as exc:
         from htdp.learn.errors import LearnUnavailable
         typer.echo(f"error: {LearnUnavailable()}", err=True)
         raise typer.Exit(1) from exc
-
-    generate_demos(out, n_train=n_train, n_test=n_test, seed=seed)
     typer.echo(f"wrote demos to {out} (train={n_train} test={n_test})")
 
 

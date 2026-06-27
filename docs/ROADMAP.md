@@ -65,13 +65,15 @@ LeRobotDataset format; `htdp train-policy` trains a compact action-chunking tran
 in PyTorch/MPS with observation-noise augmentation; `htdp eval-policy` runs the learned policy
 **autonomously closed-loop** (receding-horizon action chunks) over 25 held-out cube positions
 and reports success-rate vs the scripted-IK baseline. Result: **policy 100% success,
-place_error 0.0025 m**, matching the baseline (`docs/demo/m2_eval.json`). Execution is kinematic
-(consistent with the kinematic teacher); grasp is the M1 kinematic attach gated on the policy's
-gripper action. Three classic imitation pitfalls were found and fixed in the process: a
-normalization landmine on a constant feature (gripper width — dropped), a kinematic-vs-physics
-action mismatch (actuator control abandoned for kinematic, matching the teacher), and
-compounding error (cut via obs-noise training + executing most of each action chunk before
-re-planning). Visuomotor (pixels) + true-physics actuator control deferred to M2.5.
+place_error 0.0025 m**, matching the baseline (`docs/demo/m2_eval.json`). Scope: held-out
+positions are sampled from the **same 10×10 cm region** as training (in-distribution
+interpolation, not extrapolation to novel regions), and execution is **kinematic** (the policy
+reproduces the teacher's gripper trajectory; no actuator dynamics). Grasp is the M1 kinematic
+attach gated on the policy's gripper action. Three classic imitation pitfalls were found and
+fixed in the process: a normalization landmine on a constant feature (gripper width — dropped),
+a kinematic-vs-physics action mismatch (actuator control abandoned for kinematic, matching the
+teacher), and compounding error (cut via obs-noise training + executing most of each action
+chunk before re-planning). Visuomotor (pixels) + true-physics actuator control deferred to M2.5.
 
 **M2.5 — next:** pixel observations (visuomotor ACT) and/or physics-actuator demos+control.
 

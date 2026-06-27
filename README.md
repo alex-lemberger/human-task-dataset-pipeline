@@ -70,9 +70,11 @@ htdp eval-policy  --demos demos --policy policy.pt        # autonomous rollout v
 A compact action-chunking transformer (ACT) is trained on scripted demonstrations and then
 drives the Franka **autonomously closed-loop** in MuJoCo, generalizing to unseen cube
 positions. On 25 held-out positions the learned policy reaches **100% success
-(place_error 0.0025 m)**, matching the scripted-IK baseline. State-based observations
-(joint + object poses); demos are stored in LeRobotDataset format. Visuomotor (pixels) is the
-M2.5 extension.
+(place_error 0.0025 m)**, matching the scripted-IK baseline. Scope: held-out positions are
+drawn from the **same 10×10 cm region** as training (in-distribution interpolation), and
+execution is **kinematic** (the policy reproduces the teacher's gripper trajectory; no actuator
+dynamics). State-based observations (joint + object poses); demos are stored in LeRobotDataset
+format. Visuomotor (pixels) is the M2.5 extension.
 
 ## Notes
 
