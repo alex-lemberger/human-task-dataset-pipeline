@@ -28,3 +28,10 @@ def test_actuators_track_ik_target():
     reached = data.site_xpos[grasp_sid]
     err = float(np.linalg.norm(np.array(target_xyz) - reached))
     assert err < 0.03, f"grasp site off target by {err:.3f} m"
+
+
+def test_friction_grasp_lifts_cube():
+    from htdp.replay.physics_episode import run_physics_episode
+
+    res = run_physics_episode(cube_xy=(0.50, -0.15))
+    assert res.lifted, "cube was not lifted by the friction grasp"
