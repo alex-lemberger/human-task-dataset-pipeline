@@ -12,8 +12,8 @@ from htdp.learn.train import Normalizer
 
 def _dummy_norm():
     stats = {
-        "observation.state": {"mean": [0.0] * 17, "std": [1.0] * 17,
-                              "min": [0.0] * 17, "max": [1.0] * 17},
+        "observation.state": {"mean": [0.0] * 16, "std": [1.0] * 16,
+                              "min": [0.0] * 16, "max": [1.0] * 16},
         "action": {"mean": [0.0] * 8, "std": [1.0] * 8,
                    "min": [0.0] * 8, "max": [1.0] * 8},
     }

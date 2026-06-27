@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import numpy as np
 
-OBS_DIM = 17
+OBS_DIM = 16
 ACTION_DIM = 8
 
+# NOTE: the gripper finger width is deliberately NOT in the observation. The scripted teacher
+# never actuates the fingers, so it is constant across every demo (std ~ 0) — a normalization
+# landmine: any tiny mismatch at rollout produces an astronomically large normalized input that
+# destroys the policy. A constant feature carries no information; it is dropped entirely.
 OBS_NAMES = [
     *(f"q{i}" for i in range(7)),
-    "finger_width",
     "eef_x", "eef_y", "eef_z",
     "cube_x", "cube_y", "cube_z",
     "tgt_x", "tgt_y", "tgt_z",
@@ -16,14 +19,13 @@ ACTION_NAMES = [*(f"q{i}_target" for i in range(7)), "gripper"]
 
 
 def build_observation(model, data, grasp_sid: int) -> np.ndarray:  # type: ignore[no-untyped-def]
-    """State observation, shape (17,). See OBS_NAMES for the layout."""
+    """State observation, shape (16,). See OBS_NAMES for the layout."""
     eef = data.site_xpos[grasp_sid]
     cube = data.body("cube").xpos
     tgt = model.site("target").pos
     return np.concatenate(
         [
             data.qpos[:7],
-            data.qpos[7:8],  # finger_joint1 ~ half the gripper width
             eef,
             cube,
             tgt,

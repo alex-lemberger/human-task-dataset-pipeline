@@ -36,6 +36,11 @@ target-version = "py311"
 [tool.ruff.format]
 line-ending = "lf"
 
+[tool.ruff.lint.per-file-ignores]
+# Tests guard heavy optional-dep imports with pytest.importorskip before importing the module
+# under test, so module-level imports legitimately follow a statement (E402).
+"tests/**" = ["E402"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true

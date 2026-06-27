@@ -59,6 +59,21 @@ renders an MP4.
 
 ![M1 pick-and-place demo](docs/demo/m1_pick_place.mp4)
 
+## Imitation policy (M2)
+
+```bash
+htdp gen-demos   --out demos --n-train 200 --n-test 25   # scripted teacher -> LeRobot-format demos
+htdp train-policy --demos demos --out policy.pt --steps 5000   # compact ACT, PyTorch/MPS
+htdp eval-policy  --demos demos --policy policy.pt        # autonomous rollout vs IK baseline
+```
+
+A compact action-chunking transformer (ACT) is trained on scripted demonstrations and then
+drives the Franka **autonomously closed-loop** in MuJoCo, generalizing to unseen cube
+positions. On 25 held-out positions the learned policy reaches **100% success
+(place_error 0.0025 m)**, matching the scripted-IK baseline. State-based observations
+(joint + object poses); demos are stored in LeRobotDataset format. Visuomotor (pixels) is the
+M2.5 extension.
+
 ## Notes
 
 - The CLI is anchored to a `data/` working directory: `process`/`package` read and write

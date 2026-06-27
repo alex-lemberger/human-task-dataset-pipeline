@@ -29,15 +29,15 @@ def test_generate_demos_writes_lerobot_layout(tmp_path):
     df = pl.read_parquet(eps[0])
     assert set(["observation.state", "action", "timestamp", "frame_index",
                 "episode_index", "index"]).issubset(df.columns)
-    assert len(df["observation.state"][0]) == 17
+    assert len(df["observation.state"][0]) == 16
     assert len(df["action"][0]) == 8
 
     info = json.loads((out / "meta" / "info.json").read_text())
     assert info["fps"] == 25
-    assert info["features"]["observation.state"]["shape"] == [17]
+    assert info["features"]["observation.state"]["shape"] == [16]
 
     stats = json.loads((out / "meta" / "stats.json").read_text())
-    assert len(stats["observation.state"]["mean"]) == 17
+    assert len(stats["observation.state"]["mean"]) == 16
     assert len(stats["action"]["mean"]) == 8
 
     test_pos = json.loads((out / "meta" / "test_positions.json").read_text())

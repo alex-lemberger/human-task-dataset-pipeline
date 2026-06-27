@@ -65,6 +65,7 @@ def train(
     batch: int = 64,
     lr: float = 1e-4,
     chunk: int = 20,
+    obs_noise: float = 0.05,
     seed: int = 0,
 ) -> Path:
     torch.manual_seed(seed)
@@ -85,8 +86,14 @@ def train(
     for _ in range(steps):
         idx = rng.integers(0, len(obs), size=min(batch, len(obs)))
         bi = torch.as_tensor(idx, device=device)
+        # Observation-noise augmentation (DART-style): perturb the (normalized) obs so the policy
+        # learns to recover from the small state errors it will accumulate in closed-loop rollout.
+        # This is the main defence against compounding error / covariate shift.
+        batch_obs = obs[bi]
+        if obs_noise > 0:
+            batch_obs = batch_obs + obs_noise * torch.randn_like(batch_obs)
         opt.zero_grad()
-        loss = torch.nn.functional.l1_loss(net(obs[bi]), tgt[bi])
+        loss = torch.nn.functional.l1_loss(net(batch_obs), tgt[bi])
         loss.backward()  # type: ignore[no-untyped-call]
         opt.step()
 

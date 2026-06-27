@@ -21,7 +21,7 @@ def test_obs_and_action_shapes_and_target():
     assert obs.shape == (OBS_DIM,)
     # last three entries are the fixed target xyz
     tgt = m.site(TARGET_SITE).pos
-    assert np.allclose(obs[14:17], tgt)
+    assert np.allclose(obs[13:16], tgt)
 
     act_open = build_action(d, False)
     act_closed = build_action(d, True)

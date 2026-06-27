@@ -59,8 +59,21 @@ continuation (no per-waypoint reset). Grasp is a kinematic attach; collision bit
 gripper from disturbing the object pre-grasp. (The original SO-ARM100 was dropped: its 5 DOF
 cannot orient a gripper top-down at a tabletop target — see git history.)
 
-**M2 — next:** collect demos in the M1 sim, export a LeRobot-compatible dataset, train an
-imitation-learning policy, run the task autonomously, report success rate vs the IK baseline.
+**M2 — done:** state-based imitation learning. `htdp gen-demos` runs the M1 scripted teacher
+over randomized cube positions and records `(observation.state, action)` demos in
+LeRobotDataset format; `htdp train-policy` trains a compact action-chunking transformer (ACT)
+in PyTorch/MPS with observation-noise augmentation; `htdp eval-policy` runs the learned policy
+**autonomously closed-loop** (receding-horizon action chunks) over 25 held-out cube positions
+and reports success-rate vs the scripted-IK baseline. Result: **policy 100% success,
+place_error 0.0025 m**, matching the baseline (`docs/demo/m2_eval.json`). Execution is kinematic
+(consistent with the kinematic teacher); grasp is the M1 kinematic attach gated on the policy's
+gripper action. Three classic imitation pitfalls were found and fixed in the process: a
+normalization landmine on a constant feature (gripper width — dropped), a kinematic-vs-physics
+action mismatch (actuator control abandoned for kinematic, matching the teacher), and
+compounding error (cut via obs-noise training + executing most of each action chunk before
+re-planning). Visuomotor (pixels) + true-physics actuator control deferred to M2.5.
+
+**M2.5 — next:** pixel observations (visuomotor ACT) and/or physics-actuator demos+control.
 
 ---
 
