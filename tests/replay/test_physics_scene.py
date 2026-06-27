@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 mujoco = pytest.importorskip("mujoco")
@@ -23,8 +22,6 @@ def test_fingers_can_contact_cube():
     model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
     data = mujoco.MjData(model)
     cube_gid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "cube_geom")
-    # left/right finger collision geoms live under the hand; gather all hand-subtree geoms
-    hand_bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hand")
     # Park the gripper around the cube: set finger joints near-closed, cube between pads.
     # Drive via a forward sim with the gripper command fully closed.
     data.ctrl[7] = 0.0  # close gripper

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-mujoco = pytest.importorskip("mink")  # IK backend
+pytest.importorskip("mink")  # IK backend
 mujoco = pytest.importorskip("mujoco")
 
 from htdp.replay.arm_ik import solve_arm_ik
