@@ -240,7 +240,12 @@ def gen_demos(
     seed: int = typer.Option(0, "--seed"),
 ) -> None:
     """Generate randomized scripted pick-place demos in LeRobotDataset format."""
-    from htdp.learn.dataset import generate_demos
+    try:
+        from htdp.learn.dataset import generate_demos
+    except ImportError as exc:
+        from htdp.learn.errors import LearnUnavailable
+        typer.echo(f"error: {LearnUnavailable()}", err=True)
+        raise typer.Exit(1) from exc
 
     generate_demos(out, n_train=n_train, n_test=n_test, seed=seed)
     typer.echo(f"wrote demos to {out} (train={n_train} test={n_test})")
@@ -253,7 +258,12 @@ def train_policy(
     steps: int = typer.Option(3000, "--steps"),
 ) -> None:
     """Train the ACT imitation policy on generated demos."""
-    from htdp.learn.train import pick_device, train
+    try:
+        from htdp.learn.train import pick_device, train
+    except ImportError as exc:
+        from htdp.learn.errors import LearnUnavailable
+        typer.echo(f"error: {LearnUnavailable()}", err=True)
+        raise typer.Exit(1) from exc
 
     train(demos, out, steps=steps)
     typer.echo(f"trained on {pick_device()}; wrote {out}")
@@ -268,7 +278,12 @@ def eval_policy(
     """Roll out the policy on held-out positions; report success-rate vs scripted baseline."""
     import json
 
-    from htdp.learn.eval import evaluate
+    try:
+        from htdp.learn.eval import evaluate
+    except ImportError as exc:
+        from htdp.learn.errors import LearnUnavailable
+        typer.echo(f"error: {LearnUnavailable()}", err=True)
+        raise typer.Exit(1) from exc
 
     positions = [tuple(p) for p in json.loads((demos / "meta" / "test_positions.json").read_text())]
     report = evaluate(policy, positions, out_path=out)
