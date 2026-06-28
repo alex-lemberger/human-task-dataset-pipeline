@@ -6,7 +6,7 @@
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
     <rgba haze="0.15 0.25 0.35 1"/>
-    <global azimuth="140" elevation="-25"/>
+    <global azimuth="140" elevation="-25" offwidth="640" offheight="480"/>
   </visual>
 
   <asset>
@@ -32,6 +32,10 @@
     </body>
 
     <site name="target" pos="0.50 0.15 0.205" size="0.03" rgba="0.2 0.8 0.2 0.5"/>
+
+    <!-- Fixed third-person camera framing the table, cube and target; the visual stream a
+         B2/B3 visuomotor policy will consume. Looks from +x down at the workspace centre. -->
+    <camera name="front" pos="1.15 0 0.55" xyaxes="0 1 0 -0.45 0 0.9"/>
   </worldbody>
 
   <equality>

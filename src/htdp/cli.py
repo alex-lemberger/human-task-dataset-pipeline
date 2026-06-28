@@ -232,6 +232,30 @@ def sim_task(
         typer.echo(f"wrote {video}")
 
 
+@app.command(name="render-physics")
+def render_physics(
+    video: Path = typer.Option(..., "--video", help="write the MP4 to this path"),
+    x: float = typer.Option(0.50, "--x", help="cube start x"),
+    y: float = typer.Option(-0.15, "--y", help="cube start y"),
+    camera: str = typer.Option("front", "--camera", help="named scene camera"),
+    force: bool = typer.Option(False, "--force", help="overwrite an existing video"),
+) -> None:
+    """Render the physics friction-grasp episode from a named camera to an MP4."""
+    from htdp.replay.ik import IkUnavailable
+
+    try:
+        from htdp.replay.render import render_physics_episode
+
+        render_physics_episode(video, cube_xy=(x, y), camera=camera, force=force)
+    except IkUnavailable as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    except FileExistsError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"wrote {video}")
+
+
 @app.command(name="gen-demos")
 def gen_demos(
     out: Path = typer.Option(..., "--out", help="dataset output directory"),
