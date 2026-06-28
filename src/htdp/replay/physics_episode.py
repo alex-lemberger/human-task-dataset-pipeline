@@ -56,6 +56,7 @@ def run_physics_episode(  # type: ignore[no-untyped-def]
     grip_settle: int = 200,
     gripper_open: float = 255.0,
     gripper_close: float = 0.0,
+    on_sample=None,
 ) -> "PhysicsEpisodeResult":
     import mujoco
     import numpy as np
@@ -114,6 +115,9 @@ def run_physics_episode(  # type: ignore[no-untyped-def]
             frames += 1
             if not lifted and float(data.body(OBJECT_BODY).xpos[2]) > start_z + 0.05:
                 lifted = True
+        # Emit one row per IK target, sampled at the SETTLED state (after this target's steps).
+        if on_sample is not None:
+            on_sample(model, data, closed)
         prev_closed = closed
 
     cube = data.body(OBJECT_BODY).xpos

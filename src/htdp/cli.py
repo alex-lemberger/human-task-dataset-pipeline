@@ -239,7 +239,7 @@ def gen_demos(
     n_test: int = typer.Option(25, "--n-test"),
     seed: int = typer.Option(0, "--seed"),
 ) -> None:
-    """Generate randomized scripted pick-place demos in LeRobotDataset format."""
+    """Generate randomized physics pick-place demos (friction grasp) in LeRobotDataset format."""
     try:
         from htdp.learn.dataset import generate_demos
 

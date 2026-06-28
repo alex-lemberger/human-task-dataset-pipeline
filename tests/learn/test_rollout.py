@@ -5,6 +5,7 @@ torch = pytest.importorskip("torch")
 pytest.importorskip("mujoco")
 pytest.importorskip("mink")
 
+from htdp.learn.obs import OBS_DIM
 from htdp.learn.policy import ACTConfig, ACTPolicy
 from htdp.learn.rollout import RolloutResult, rollout_policy
 from htdp.learn.train import Normalizer
@@ -12,8 +13,8 @@ from htdp.learn.train import Normalizer
 
 def _dummy_norm():
     stats = {
-        "observation.state": {"mean": [0.0] * 16, "std": [1.0] * 16,
-                              "min": [0.0] * 16, "max": [1.0] * 16},
+        "observation.state": {"mean": [0.0] * OBS_DIM, "std": [1.0] * OBS_DIM,
+                              "min": [0.0] * OBS_DIM, "max": [1.0] * OBS_DIM},
         "action": {"mean": [0.0] * 8, "std": [1.0] * 8,
                    "min": [0.0] * 8, "max": [1.0] * 8},
     }
