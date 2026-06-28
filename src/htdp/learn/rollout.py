@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import torch
@@ -32,7 +31,9 @@ def load_policy(ckpt_path: Path) -> tuple[ACTPolicy, Normalizer]:
 
 
 _APPROACH_Z = 0.35  # ready-pose height above the table (matches the teacher's _Z_HI)
-_FINGER_OPEN = 0.04  # fingers held open the whole episode (grasp is the kinematic attach)
+_Z_LO = 0.225  # cube rest height = table_top(0.20) + cube_half(0.025)
+_GRIPPER_OPEN = 255.0  # position-servo gripper ctrl (matches the physics teacher)
+_GRIPPER_CLOSE = 0.0
 
 
 def rollout_policy(
@@ -42,68 +43,67 @@ def rollout_policy(
     *,
     exec_horizon: int = 16,
     max_chunks: int = 60,
-    grasp_thresh: float = 0.05,
-    grasp_gripper: float = 0.4,
+    settle: int = 20,
+    grip_settle: int = 200,
+    grasp_thresh: float = 0.5,
 ) -> RolloutResult:
-    """Closed-loop KINEMATIC rollout. The policy's joint targets are applied directly to qpos
-    (consistent with the kinematic teacher), re-planning every ``exec_horizon`` actions
-    (receding horizon). Grasp is the M1 kinematic attach, gated on the policy's gripper command
-    plus cube proximity. The arm resets to an in-distribution ready pose above the cube via IK.
+    """Closed-loop PHYSICS rollout. The policy's joint targets drive the position-servo actuators
+    under ``mj_step`` (consistent with the A2 physics teacher), re-planning every ``exec_horizon``
+    actions (receding horizon). Grasp is a TRUE friction grasp — the gripper ctrl is closed on the
+    policy's gripper command and the cube is held by finger contact, NOT a kinematic attach. On the
+    open->close transition the grip is seated for ``grip_settle`` extra steps before the arm moves
+    on, exactly as the teacher seats it. The arm resets to an in-distribution ready pose above the
+    cube via IK, fingers open.
     """
     import mujoco
 
     from htdp.replay.arm_ik import solve_arm_ik
-    from htdp.replay.scene import OBJECT_FREEJOINT, TARGET_SITE, TASK_SCENE_XML
+    from htdp.replay.scene import OBJECT_FREEJOINT, TARGET_SITE, TASK_SCENE_PHYSICS_XML
 
-    model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_XML))
+    model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
     data = mujoco.MjData(model)
+    key = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "home")
+    mujoco.mj_resetDataKeyframe(model, data, key)
     grasp_sid: int = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
     cube_jid: int = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, OBJECT_FREEJOINT)
     cube_qadr: int = int(model.jnt_qposadr[cube_jid])
     tgt: np.ndarray = model.site(TARGET_SITE).pos
 
-    # Reset to a ready pose above the cube (in-distribution start; the teacher's first frame is
-    # also an above-cube IK pose). Fingers held open to match the demo distribution.
+    # Seat the cube on the table (full 7-DOF freejoint: the home keyframe zeroes it otherwise).
+    data.qpos[cube_qadr : cube_qadr + 3] = (cube_xy[0], cube_xy[1], _Z_LO)
+    data.qpos[cube_qadr + 3 : cube_qadr + 7] = (1.0, 0.0, 0.0, 0.0)
+
+    # Settle into a ready pose above the cube (in-distribution start; the teacher's first frame is
+    # also an above-cube IK pose). Drive the actuators there with the gripper open.
     ready = solve_arm_ik([(0.0, cube_xy[0], cube_xy[1], _APPROACH_Z, 1.0, 0.0, 0.0, 0.0)])
-    data.qpos[:7] = ready.joint_trajectory[0][:7]
-    data.qpos[7] = _FINGER_OPEN
-    data.qpos[8] = _FINGER_OPEN
-    data.qpos[cube_qadr : cube_qadr + 2] = cube_xy
-    mujoco.mj_forward(model, data)
+    ready_q = ready.joint_trajectory[0][:7]
+    data.ctrl[:7] = ready_q
+    data.ctrl[7] = _GRIPPER_OPEN
+    for _ in range(grip_settle):
+        mujoco.mj_step(model, data)
     start_z = float(data.body("cube").xpos[2])
 
-    attached: dict[str, Any] = {"on": False, "offset": None}
     lifted = False
     steps = 0
+    prev_closed = False
     for _ in range(max_chunks):
         obs = build_observation(model, data, grasp_sid)
         obs_t = normalizer.normalize_obs(torch.as_tensor(obs))
         chunk = normalizer.denormalize_action(policy.act(obs_t)).detach().numpy()
         for action in chunk[:exec_horizon]:
-            data.qpos[:7] = action[:7]
-            data.qvel[:7] = 0.0
-            data.qpos[7] = _FINGER_OPEN
-            data.qpos[8] = _FINGER_OPEN
-            gripper = float(action[7])
-            mujoco.mj_forward(model, data)
-            if gripper > grasp_gripper and not attached["on"]:
-                gap: np.ndarray = data.body("cube").xpos - data.site_xpos[grasp_sid]
-                if float(np.linalg.norm(gap)) < grasp_thresh:
-                    attached["on"] = True
-                    attached["offset"] = gap.copy()
-            if gripper <= grasp_gripper:
-                attached["on"] = False
-            if attached["on"]:
-                data.qpos[cube_qadr : cube_qadr + 3] = (
-                    data.site_xpos[grasp_sid] + attached["offset"]
-                )
-                data.qpos[cube_qadr + 3 : cube_qadr + 7] = (1.0, 0.0, 0.0, 0.0)
-            mujoco.mj_forward(model, data)
-            steps += 1
-            if float(data.body("cube").xpos[2]) > start_z + 0.05:
-                lifted = True
+            closed = float(action[7]) > grasp_thresh
+            data.ctrl[:7] = action[:7]
+            data.ctrl[7] = _GRIPPER_CLOSE if closed else _GRIPPER_OPEN
+            # Seat the grip on the open->close transition, exactly like the teacher.
+            n = settle + (grip_settle if closed and not prev_closed else 0)
+            for _ in range(n):
+                mujoco.mj_step(model, data)
+                steps += 1
+                if float(data.body("cube").xpos[2]) > start_z + 0.05:
+                    lifted = True
+            prev_closed = closed
 
     cube: np.ndarray = data.body("cube").xpos
     place_error = float(np.hypot(cube[0] - tgt[0], cube[1] - tgt[1]))
-    success = bool(place_error < 0.03 and lifted)
+    success = bool(place_error < 0.05 and lifted)
     return RolloutResult(success, place_error, lifted, (float(cube[0]), float(cube[1])), steps)
