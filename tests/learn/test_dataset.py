@@ -48,3 +48,32 @@ def test_generate_demos_writes_lerobot_layout(tmp_path):
 
     test_pos = json.loads((out / "meta" / "test_positions.json").read_text())
     assert len(test_pos) == 1
+
+
+def test_generate_demos_writes_aligned_image_sidecar(tmp_path):
+    """B2: each episode gets a uint8 image stack [T,96,96,3] aligned 1:1 with its parquet rows.
+
+    Stored as a sidecar .npy (parquet stays low-dim, train.py unchanged); B3 loads it by
+    frame_index. The frames must show the red cube -- a zero/blank stack would silently train a
+    blind visuomotor policy in B3 (the render-side false-green lesson, carried into the dataset).
+    """
+    import numpy as np
+    import polars as pl
+
+    out = generate_demos(tmp_path / "demos", n_train=2, n_test=1, seed=0)
+    data_dir = out / "data" / "chunk-000"
+
+    for ep_parquet in sorted(data_dir.glob("episode_*.parquet")):
+        img_path = ep_parquet.with_name(ep_parquet.stem + "_image.npy")
+        assert img_path.exists(), f"missing image sidecar for {ep_parquet.name}"
+        imgs = np.load(img_path)
+        rows = len(pl.read_parquet(ep_parquet))
+        assert imgs.shape == (rows, 96, 96, 3)
+        assert imgs.dtype == np.uint8
+        # red cube present in at least one frame (camera actually captured the workspace)
+        r, g, b = imgs[..., 0].astype(int), imgs[..., 1].astype(int), imgs[..., 2].astype(int)
+        assert int(np.count_nonzero((r > 120) & (g < 100) & (b < 100))) > 20
+
+    info = json.loads((out / "meta" / "info.json").read_text())
+    assert info["features"]["observation.image"]["shape"] == [96, 96, 3]
+    assert info["features"]["observation.image"]["dtype"] == "uint8"

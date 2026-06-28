@@ -6,14 +6,19 @@ from htdp.replay.ik import IkUnavailable
 from htdp.replay.scene import TASK_SCENE_PHYSICS_XML, TASK_SCENE_XML
 
 
-def render_camera(model, data, *, camera, height: int, width: int):  # type: ignore[no-untyped-def]
+def render_camera(model, data, *, camera, height: int, width: int, renderer=None):  # type: ignore[no-untyped-def]
     """Grab a single RGB frame (H, W, 3) from a NAMED camera at the current physics state.
 
     Reusable visual-observation primitive: B2 image demos and B3 visuomotor rollout render the
     policy's pixels through this same path, so train-time and rollout-time framing cannot drift.
-    Creates a renderer per call — fine for one-offs; the video path below reuses one renderer.
+    Pass a persistent ``renderer`` (a ``mujoco.Renderer``) to capture many frames without paying
+    the per-call renderer construction (its height/width win); otherwise one is made and closed.
     """
     import mujoco
+
+    if renderer is not None:
+        renderer.update_scene(data, camera=camera)
+        return renderer.render()
 
     renderer = mujoco.Renderer(model, height=height, width=width)
     try:
