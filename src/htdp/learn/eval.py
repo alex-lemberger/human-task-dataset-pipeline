@@ -10,14 +10,16 @@ from htdp.learn.rollout import load_policy, rollout_policy
 
 
 def baseline_at(positions: list[tuple[float, float]]) -> dict[str, float | int]:
-    from htdp.replay.episode import run_episode
+    # Baseline = the A2 physics friction-grasp teacher (the same executor the policy imitates),
+    # so policy-vs-baseline is apples-to-apples under true physics.
+    from htdp.replay.physics_episode import run_physics_episode
 
     errs: list[float] = []
     succ = 0
     for cube_xy in positions:
-        r = run_episode(cube_xy=tuple(cube_xy))
+        r = run_physics_episode(cube_xy=tuple(cube_xy))
         errs.append(r.place_error)
-        succ += int(r.place_error < 0.03)
+        succ += int(r.lifted and r.place_error < 0.05)
     n = len(positions)
     return {
         "success_rate": succ / n if n else 0.0,
