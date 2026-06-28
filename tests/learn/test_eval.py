@@ -43,3 +43,21 @@ def test_policy_beats_zero_on_held_out(tmp_path):
     results = [rollout_policy(net, norm, p) for p in positions]
     success_rate = sum(r.success for r in results) / len(results)
     assert success_rate > 0.0, f"policy learned nothing (success_rate={success_rate})"
+
+
+def test_visuomotor_policy_beats_zero_on_held_out(tmp_path):
+    """B3 capstone gate: a policy that sees ONLY the front image + proprio (no privileged cube or
+    target xyz) must achieve nonzero held-out success under true physics. Proves the CNN localises
+    the cube and goal from pixels and drives a friction grasp closed-loop. seed=0 measured 4/6."""
+    import json
+
+    from htdp.learn.rollout import load_visuomotor_policy, rollout_visuomotor_policy
+    from htdp.learn.train import train_visuomotor
+
+    ds = generate_demos(tmp_path / "demos", n_train=40, n_test=6, seed=0)
+    ckpt = train_visuomotor(ds, tmp_path / "vm.pt", steps=6000, batch=32, seed=0)
+    net, norm = load_visuomotor_policy(ckpt)
+    positions = [tuple(p) for p in json.loads((ds / "meta" / "test_positions.json").read_text())]
+    results = [rollout_visuomotor_policy(net, norm, p) for p in positions]
+    success_rate = sum(r.success for r in results) / len(results)
+    assert success_rate > 0.0, f"visuomotor policy learned nothing (success_rate={success_rate})"

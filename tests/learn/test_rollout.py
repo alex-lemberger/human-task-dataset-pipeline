@@ -36,3 +36,25 @@ def test_rollout_is_deterministic():
     a = rollout_policy(net, _dummy_norm(), (0.50, -0.15), max_chunks=5)
     b = rollout_policy(net, _dummy_norm(), (0.50, -0.15), max_chunks=5)
     assert a.cube_final_xy == b.cube_final_xy
+
+
+def _dummy_vm_norm():
+    from htdp.learn.obs import PROPRIO_DIM
+    from htdp.learn.train import VisuomotorNormalizer
+
+    p = {"mean": [0.0] * PROPRIO_DIM, "std": [1.0] * PROPRIO_DIM}
+    a = {"mean": [0.0] * 8, "std": [1.0] * 8}
+    return VisuomotorNormalizer(p, a)
+
+
+def test_visuomotor_rollout_runs_and_is_deterministic():
+    from htdp.learn.policy import VisuomotorACTConfig, VisuomotorACTPolicy
+    from htdp.learn.rollout import rollout_visuomotor_policy
+
+    torch.manual_seed(0)
+    net = VisuomotorACTPolicy(VisuomotorACTConfig(chunk=8))
+    a = rollout_visuomotor_policy(net, _dummy_vm_norm(), (0.50, -0.15), max_chunks=4)
+    b = rollout_visuomotor_policy(net, _dummy_vm_norm(), (0.50, -0.15), max_chunks=4)
+    assert isinstance(a, RolloutResult)
+    assert a.steps > 0
+    assert a.cube_final_xy == b.cube_final_xy

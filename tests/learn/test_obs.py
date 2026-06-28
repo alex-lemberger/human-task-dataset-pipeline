@@ -30,6 +30,39 @@ def test_obs_and_action_shapes_and_target():
     assert np.allclose(act_open[:7], d.qpos[:7])
 
 
+def test_proprio_drops_privileged_cube_and_target():
+    """B3 visuomotor obs: proprioception only (joints, eef, finger width). The privileged cube and
+    target xyz are removed -- the policy must read object/goal location from pixels, not state."""
+    import mujoco
+
+    from htdp.learn.obs import (
+        PROPRIO_DIM,
+        PROPRIO_INDICES,
+        build_observation,
+        build_proprio_observation,
+        proprio_from_state,
+    )
+    from htdp.replay.scene import TASK_SCENE_PHYSICS_XML
+
+    assert PROPRIO_DIM == 11
+    # joints 0..6, eef 7..9, finger_width 16 -- never cube (10..12) or target (13..15)
+    assert PROPRIO_INDICES == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16]
+    assert not any(i in PROPRIO_INDICES for i in (10, 11, 12, 13, 14, 15))
+
+    m = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
+    d = mujoco.MjData(m)
+    d.qpos[7] = d.qpos[8] = 0.03
+    mujoco.mj_forward(m, d)
+    gsid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
+
+    full = build_observation(m, d, gsid)
+    prop = build_proprio_observation(m, d, gsid)
+    assert prop.shape == (PROPRIO_DIM,)
+    # built-direct equals slicing the full state -- one source of truth
+    assert np.allclose(prop, proprio_from_state(full))
+    assert np.allclose(prop, full[PROPRIO_INDICES])
+
+
 def test_obs_last_entry_is_finger_width():
     """Physics teacher actuates the fingers, so width varies and returns to the observation.
 

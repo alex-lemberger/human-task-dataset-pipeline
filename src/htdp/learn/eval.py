@@ -46,6 +46,26 @@ def _policy_at(
     }
 
 
+def _visuomotor_at(
+    ckpt_path: Path, positions: list[tuple[float, float]]
+) -> dict[str, float | int]:
+    from htdp.learn.rollout import load_visuomotor_policy, rollout_visuomotor_policy
+
+    net, norm = load_visuomotor_policy(ckpt_path)
+    errs: list[float] = []
+    succ = 0
+    for cube_xy in positions:
+        r = rollout_visuomotor_policy(net, norm, cube_xy)
+        errs.append(r.place_error)
+        succ += int(r.success)
+    n = len(positions)
+    return {
+        "success_rate": succ / n if n else 0.0,
+        "mean_place_error": float(np.mean(errs)) if errs else 0.0,
+        "n": n,
+    }
+
+
 def evaluate(
     ckpt_path: Path,
     positions: list[tuple[float, float]],
@@ -54,6 +74,22 @@ def evaluate(
 ) -> dict[str, dict[str, float | int]]:
     report: dict[str, dict[str, float | int]] = {
         "policy": _policy_at(ckpt_path, positions),
+        "baseline": baseline_at(positions),
+    }
+    if out_path is not None:
+        Path(out_path).write_text(json.dumps(report, indent=2))
+    return report
+
+
+def evaluate_visuomotor(
+    ckpt_path: Path,
+    positions: list[tuple[float, float]],
+    *,
+    out_path: Path | None = None,
+) -> dict[str, dict[str, float | int]]:
+    """Closed-loop visuomotor policy (pixels + proprio) vs the physics friction-grasp baseline."""
+    report: dict[str, dict[str, float | int]] = {
+        "policy": _visuomotor_at(ckpt_path, positions),
         "baseline": baseline_at(positions),
     }
     if out_path is not None:
