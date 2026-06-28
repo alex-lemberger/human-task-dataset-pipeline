@@ -16,8 +16,12 @@ being broken, and how each was caught.
 | **visuomotor ACT** | **96×96 camera image + proprioception only** | **4/6 (67%)** | 0.089 m |
 
 The visuomotor policy **matches** the state-based policy while seeing none of the privileged
-coordinates. Numbers: [`docs/demo/m25_visuomotor_eval.json`](demo/m25_visuomotor_eval.json).
-Teacher rollout video: [`docs/demo/m25_physics_pick_place.mp4`](demo/m25_physics_pick_place.mp4).
+coordinates.
+
+- **Visuomotor policy rollout** (the headline — pixels in, friction grasp out):
+  [`docs/demo/m25_visuomotor_rollout.mp4`](demo/m25_visuomotor_rollout.mp4)
+- Eval numbers: [`docs/demo/m25_visuomotor_eval.json`](demo/m25_visuomotor_eval.json)
+- Scripted physics teacher rollout: [`docs/demo/m25_physics_pick_place.mp4`](demo/m25_physics_pick_place.mp4)
 
 ## The loop
 
