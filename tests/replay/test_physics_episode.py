@@ -43,3 +43,26 @@ def test_physics_pick_and_place_succeeds():
     res = run_physics_episode(cube_xy=(0.50, -0.15))
     assert res.lifted
     assert res.place_error < 0.05, f"place_error {res.place_error:.3f} m too high"
+
+
+def test_on_sample_fires_once_per_ik_sample_with_settled_state():
+    """The demo recorder needs one settled (model, data, closed) row per IK target, NOT one per
+    mj_step — otherwise the 200-step grasp dwell over-represents a single pose."""
+    from htdp.replay.physics_episode import run_physics_episode
+
+    samples = []
+
+    def on_sample(model, data, closed):  # type: ignore[no-untyped-def]
+        samples.append((closed, float(data.qpos[7] + data.qpos[8])))
+
+    res = run_physics_episode(cube_xy=(0.50, -0.15), on_sample=on_sample)
+    assert res.lifted
+
+    # interp(25) * 8 waypoints = 200 IK samples -> 200 callback rows (one per target, not per step)
+    assert len(samples) == 200
+
+    closed_flags = [c for c, _ in samples]
+    assert any(closed_flags) and not all(closed_flags)  # grip toggles on then off
+
+    widths = [w for _, w in samples]
+    assert max(widths) - min(widths) > 0.01  # fingers actually move (no constant-feature landmine)

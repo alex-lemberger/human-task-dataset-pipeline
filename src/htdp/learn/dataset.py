@@ -16,8 +16,10 @@ from htdp.learn.obs import (
     build_observation,
 )
 
-CUBE_REGION = ((0.45, 0.55), (-0.20, -0.10))  # ((x_lo, x_hi), (y_lo, y_hi))
-_SETTLE = 6
+# Physics teacher's confirmed friction-grasp success zone (docs/m2/a1-physics-grasp.md sweep):
+# the x=0.46 column fails the grasp entirely, so x_lo is raised to 0.48. Everything x>=0.48
+# across the full y range lifts and places under true physics.
+CUBE_REGION = ((0.48, 0.55), (-0.20, -0.10))  # ((x_lo, x_hi), (y_lo, y_hi))
 _TASK = "pick the cube and place it on the target"
 
 
@@ -32,25 +34,31 @@ def sample_cube_positions(n: int, seed: int) -> list[tuple[float, float]]:
 def _record_episode(
     cube_xy: tuple[float, float], ep_index: int, index_start: int, fps: int
 ) -> list[dict[str, object]]:
-    """Run the scripted teacher once; return a list of row dicts, one per waypoint step."""
+    """Run the PHYSICS teacher once; return a list of row dicts, one per settled IK target.
+
+    Replaces the M2 kinematic teacher (qpos overwrite + kinematic attach) with the true-physics
+    friction grasp. ``on_sample`` fires once per IK target at its settled state, so each row is a
+    distinct waypoint pose — the 200-step grasp dwell is collapsed to one row, not over-sampled.
+    """
     import mujoco
 
-    from htdp.replay.episode import run_episode
-    from htdp.replay.scene import TASK_SCENE_XML
+    from htdp.replay.physics_episode import run_physics_episode
+    from htdp.replay.scene import TASK_SCENE_PHYSICS_XML
 
-    model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_XML))
-    grasp_sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
+    grasp_sid = mujoco.mj_name2id(
+        mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML)),
+        mujoco.mjtObj.mjOBJ_SITE,
+        "grasp_site",
+    )
 
     rows: list[dict[str, object]] = []
 
-    def on_step(data, frame, grasp):  # type: ignore[no-untyped-def]
-        if frame % _SETTLE != _SETTLE - 1:
-            return
+    def on_sample(model, data, closed):  # type: ignore[no-untyped-def]
         fi = len(rows)
         rows.append(
             {
                 "observation.state": build_observation(model, data, grasp_sid).tolist(),
-                "action": build_action(data, grasp).tolist(),
+                "action": build_action(data, closed).tolist(),
                 "timestamp": fi / fps,
                 "frame_index": fi,
                 "episode_index": ep_index,
@@ -58,9 +66,7 @@ def _record_episode(
             }
         )
 
-    # Re-run with the SAME model instance so site ids match: run_episode builds its own
-    # model internally, but ids for the shared scene file are identical, so reuse is safe.
-    run_episode(cube_xy=cube_xy, on_step=on_step)
+    run_physics_episode(cube_xy=cube_xy, on_sample=on_sample)
     return rows
 
 

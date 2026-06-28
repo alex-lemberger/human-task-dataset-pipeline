@@ -28,3 +28,31 @@ def test_obs_and_action_shapes_and_target():
     assert act_open.shape == (ACTION_DIM,)
     assert act_open[7] == 0.0 and act_closed[7] == 1.0
     assert np.allclose(act_open[:7], d.qpos[:7])
+
+
+def test_obs_last_entry_is_finger_width():
+    """Physics teacher actuates the fingers, so width varies and returns to the observation.
+
+    Appended at index 16 (after the fixed target xyz) so the legacy 0:16 layout is unchanged.
+    """
+    import mujoco
+
+    from htdp.replay.scene import TASK_SCENE_PHYSICS_XML
+
+    m = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
+    d = mujoco.MjData(m)
+    gsid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
+
+    # Fingers wide open vs. fully closed must give different observed widths.
+    d.qpos[7] = d.qpos[8] = 0.04
+    mujoco.mj_forward(m, d)
+    wide = build_observation(m, d, gsid)
+    assert wide.shape == (OBS_DIM,)
+    assert OBS_DIM == 17
+
+    d.qpos[7] = d.qpos[8] = 0.0
+    mujoco.mj_forward(m, d)
+    closed = build_observation(m, d, gsid)
+
+    assert wide[16] > closed[16]  # width feature tracks finger opening
+    assert np.isclose(wide[16], 0.08)  # both fingers fully open

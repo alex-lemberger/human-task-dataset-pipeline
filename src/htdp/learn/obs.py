@@ -2,33 +2,37 @@ from __future__ import annotations
 
 import numpy as np
 
-OBS_DIM = 16
+OBS_DIM = 17
 ACTION_DIM = 8
 
-# NOTE: the gripper finger width is deliberately NOT in the observation. The scripted teacher
-# never actuates the fingers, so it is constant across every demo (std ~ 0) — a normalization
-# landmine: any tiny mismatch at rollout produces an astronomically large normalized input that
-# destroys the policy. A constant feature carries no information; it is dropped entirely.
+# Finger width (sum of both finger joint positions) IS in the observation as of M2.5: the physics
+# teacher actuates the gripper, so width varies across demos (std > 0) and carries real grasp
+# state. (In M2 the kinematic teacher never moved the fingers, so width was constant — a
+# normalization landmine — and was dropped. The physics teacher reverses that.) Appended LAST so
+# the legacy 0:16 layout (joints, eef, cube, target) is unchanged.
 OBS_NAMES = [
     *(f"q{i}" for i in range(7)),
     "eef_x", "eef_y", "eef_z",
     "cube_x", "cube_y", "cube_z",
     "tgt_x", "tgt_y", "tgt_z",
+    "finger_width",
 ]
 ACTION_NAMES = [*(f"q{i}_target" for i in range(7)), "gripper"]
 
 
 def build_observation(model, data, grasp_sid: int) -> np.ndarray:  # type: ignore[no-untyped-def]
-    """State observation, shape (16,). See OBS_NAMES for the layout."""
+    """State observation, shape (17,). See OBS_NAMES for the layout."""
     eef = data.site_xpos[grasp_sid]
     cube = data.body("cube").xpos
     tgt = model.site("target").pos
+    finger_width = float(data.qpos[7] + data.qpos[8])
     return np.concatenate(
         [
             data.qpos[:7],
             eef,
             cube,
             tgt,
+            np.array([finger_width]),
         ]
     ).astype(np.float32)
 
