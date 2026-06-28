@@ -7,9 +7,16 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from htdp.learn.obs import build_observation
-from htdp.learn.policy import ACTConfig, ACTPolicy
-from htdp.learn.train import Normalizer
+from htdp.learn.obs import build_observation, build_proprio_observation
+from htdp.learn.policy import (
+    ACTConfig,
+    ACTPolicy,
+    VisuomotorACTConfig,
+    VisuomotorACTPolicy,
+)
+from htdp.learn.train import Normalizer, VisuomotorNormalizer
+
+_IMAGE_HW = 96  # visuomotor obs resolution (matches B2 demos / the 'front' camera training data)
 
 
 @dataclass
@@ -103,6 +110,87 @@ def rollout_policy(
                     lifted = True
             prev_closed = closed
 
+    cube: np.ndarray = data.body("cube").xpos
+    place_error = float(np.hypot(cube[0] - tgt[0], cube[1] - tgt[1]))
+    success = bool(place_error < 0.05 and lifted)
+    return RolloutResult(success, place_error, lifted, (float(cube[0]), float(cube[1])), steps)
+
+
+def load_visuomotor_policy(ckpt_path: Path):  # type: ignore[no-untyped-def]
+    ckpt = torch.load(Path(ckpt_path), weights_only=False)
+    net = VisuomotorACTPolicy(VisuomotorACTConfig(**ckpt["cfg"]))
+    net.load_state_dict(ckpt["state_dict"])
+    net.eval()
+    return net, VisuomotorNormalizer(ckpt["proprio_stats"], ckpt["action_stats"])
+
+
+def rollout_visuomotor_policy(
+    policy: VisuomotorACTPolicy,
+    normalizer: VisuomotorNormalizer,
+    cube_xy: tuple[float, float],
+    *,
+    exec_horizon: int = 16,
+    max_chunks: int = 60,
+    settle: int = 20,
+    grip_settle: int = 200,
+    grasp_thresh: float = 0.5,
+) -> RolloutResult:
+    """Closed-loop VISUOMOTOR physics rollout. Same true-physics actuator/friction-grasp loop as
+    ``rollout_policy``, but the policy sees only the ``front`` camera image + proprioception — the
+    cube and target positions are NOT provided; the CNN must localise them from pixels. The frame
+    is rendered through the same ``render_camera`` path the B2 demos used, so train/rollout framing
+    cannot drift.
+    """
+    import mujoco
+
+    from htdp.replay.arm_ik import solve_arm_ik
+    from htdp.replay.render import render_camera
+    from htdp.replay.scene import OBJECT_FREEJOINT, TARGET_SITE, TASK_SCENE_PHYSICS_XML
+
+    model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
+    data = mujoco.MjData(model)
+    key = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "home")
+    mujoco.mj_resetDataKeyframe(model, data, key)
+    grasp_sid: int = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
+    cube_jid: int = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, OBJECT_FREEJOINT)
+    cube_qadr: int = int(model.jnt_qposadr[cube_jid])
+    tgt: np.ndarray = model.site(TARGET_SITE).pos
+    renderer = mujoco.Renderer(model, height=_IMAGE_HW, width=_IMAGE_HW)
+
+    data.qpos[cube_qadr : cube_qadr + 3] = (cube_xy[0], cube_xy[1], _Z_LO)
+    data.qpos[cube_qadr + 3 : cube_qadr + 7] = (1.0, 0.0, 0.0, 0.0)
+
+    ready = solve_arm_ik([(0.0, cube_xy[0], cube_xy[1], _APPROACH_Z, 1.0, 0.0, 0.0, 0.0)])
+    data.ctrl[:7] = ready.joint_trajectory[0][:7]
+    data.ctrl[7] = _GRIPPER_OPEN
+    for _ in range(grip_settle):
+        mujoco.mj_step(model, data)
+    start_z = float(data.body("cube").xpos[2])
+
+    lifted = False
+    steps = 0
+    prev_closed = False
+    for _ in range(max_chunks):
+        proprio = build_proprio_observation(model, data, grasp_sid)
+        prop_t = normalizer.normalize_proprio(torch.as_tensor(proprio))
+        img = render_camera(
+            model, data, camera="front", height=_IMAGE_HW, width=_IMAGE_HW, renderer=renderer
+        )
+        img_t = torch.as_tensor(np.ascontiguousarray(img)).float().div(255.0).permute(2, 0, 1)
+        chunk = normalizer.denormalize_action(policy.act(img_t, prop_t)).detach().numpy()
+        for action in chunk[:exec_horizon]:
+            closed = float(action[7]) > grasp_thresh
+            data.ctrl[:7] = action[:7]
+            data.ctrl[7] = _GRIPPER_CLOSE if closed else _GRIPPER_OPEN
+            n = settle + (grip_settle if closed and not prev_closed else 0)
+            for _ in range(n):
+                mujoco.mj_step(model, data)
+                steps += 1
+                if float(data.body("cube").xpos[2]) > start_z + 0.05:
+                    lifted = True
+            prev_closed = closed
+
+    renderer.close()
     cube: np.ndarray = data.body("cube").xpos
     place_error = float(np.hypot(cube[0] - tgt[0], cube[1] - tgt[1]))
     success = bool(place_error < 0.05 and lifted)

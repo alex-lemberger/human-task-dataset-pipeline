@@ -318,6 +318,49 @@ def eval_policy(
     )
 
 
+@app.command(name="train-visuomotor")
+def train_visuomotor_cmd(
+    demos: Path = typer.Option(..., "--demos", help="dataset directory from gen-demos"),
+    out: Path = typer.Option(..., "--out", help="checkpoint path (vm.pt)"),
+    steps: int = typer.Option(6000, "--steps"),
+) -> None:
+    """Train the visuomotor ACT policy (front image + proprio, no privileged cube/target xyz)."""
+    try:
+        from htdp.learn.train import pick_device, train_visuomotor
+    except ImportError as exc:
+        from htdp.learn.errors import LearnUnavailable
+        typer.echo(f"error: {LearnUnavailable()}", err=True)
+        raise typer.Exit(1) from exc
+
+    train_visuomotor(demos, out, steps=steps)
+    typer.echo(f"trained on {pick_device()}; wrote {out}")
+
+
+@app.command(name="eval-visuomotor")
+def eval_visuomotor_cmd(
+    demos: Path = typer.Option(..., "--demos", help="dataset dir (for test_positions.json)"),
+    policy: Path = typer.Option(..., "--policy", help="visuomotor checkpoint path"),
+    out: Path | None = typer.Option(None, "--out", help="optional report JSON path"),
+) -> None:
+    """Roll out the visuomotor policy on held-out positions vs the physics baseline."""
+    import json
+
+    try:
+        from htdp.learn.eval import evaluate_visuomotor
+    except ImportError as exc:
+        from htdp.learn.errors import LearnUnavailable
+        typer.echo(f"error: {LearnUnavailable()}", err=True)
+        raise typer.Exit(1) from exc
+
+    positions = [tuple(p) for p in json.loads((demos / "meta" / "test_positions.json").read_text())]
+    report = evaluate_visuomotor(policy, positions, out_path=out)
+    p, b = report["policy"], report["baseline"]
+    typer.echo(
+        f"visuomotor: success={p['success_rate']:.2f} place_err={p['mean_place_error']:.4f} | "
+        f"baseline: success={b['success_rate']:.2f} place_err={b['mean_place_error']:.4f}"
+    )
+
+
 @app.command()
 def catalog(sessions_dir: Path, out_path: Path) -> None:
     """Build a multi-session Parquet catalog from a raw sessions directory."""

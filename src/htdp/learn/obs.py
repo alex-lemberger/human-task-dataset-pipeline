@@ -19,6 +19,24 @@ OBS_NAMES = [
 ]
 ACTION_NAMES = [*(f"q{i}_target" for i in range(7)), "gripper"]
 
+# B3 visuomotor proprioception: the non-privileged subset of the 17-dim state — joints, eef
+# position, finger width. The cube xyz (10:13) and target xyz (13:16) are DROPPED; the visuomotor
+# policy must localise the cube and goal from pixels, not be handed them. Defined as indices into
+# the full state so there is one source of truth (proprio_from_state slices, build_proprio builds).
+PROPRIO_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16]
+PROPRIO_DIM = len(PROPRIO_INDICES)
+PROPRIO_NAMES = [OBS_NAMES[i] for i in PROPRIO_INDICES]
+
+
+def proprio_from_state(state: np.ndarray) -> np.ndarray:
+    """Slice the proprioceptive subset out of a full (…, 17) state array."""
+    return state[..., PROPRIO_INDICES]
+
+
+def build_proprio_observation(model, data, grasp_sid: int) -> np.ndarray:  # type: ignore[no-untyped-def]
+    """Proprio observation, shape (11,): joints + eef xyz + finger width (no cube/target)."""
+    return proprio_from_state(build_observation(model, data, grasp_sid))
+
 
 def build_observation(model, data, grasp_sid: int) -> np.ndarray:  # type: ignore[no-untyped-def]
     """State observation, shape (17,). See OBS_NAMES for the layout."""
