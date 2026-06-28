@@ -15,6 +15,11 @@ being broken, and how each was caught.
 | state ACT | joints + eef + **cube xyz + target xyz** + finger width | 4/6 (67%) | 0.097 m |
 | **visuomotor ACT** | **96×96 camera image + proprioception only** | **4/6 (67%)** | 0.089 m |
 
+> *Mean place error is over all 6 held-out positions, so it is dominated by the 2 grasp-slip
+> failures (~0.25 m each); the 4 successful placements land within 0.006–0.019 m. That a constant
+> ~0.5-m-region task scores a sub-0.1-m mean is the placement quality, not the failure rate —
+> read the success column for "did it work," the error column for "how clean when it did."*
+
 The visuomotor policy **matches** the state-based policy while seeing none of the privileged
 coordinates.
 
