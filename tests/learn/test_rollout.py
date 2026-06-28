@@ -58,3 +58,15 @@ def test_visuomotor_rollout_runs_and_is_deterministic():
     assert isinstance(a, RolloutResult)
     assert a.steps > 0
     assert a.cube_final_xy == b.cube_final_xy
+
+
+def test_visuomotor_rollout_writes_video(tmp_path):
+    pytest.importorskip("imageio")
+    from htdp.learn.policy import VisuomotorACTConfig, VisuomotorACTPolicy
+    from htdp.learn.rollout import rollout_visuomotor_policy
+
+    torch.manual_seed(0)
+    net = VisuomotorACTPolicy(VisuomotorACTConfig(chunk=8))
+    out = tmp_path / "rollout.mp4"
+    rollout_visuomotor_policy(net, _dummy_vm_norm(), (0.50, -0.15), max_chunks=2, video_out=out)
+    assert out.exists() and out.stat().st_size > 10_000

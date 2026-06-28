@@ -134,12 +134,15 @@ def rollout_visuomotor_policy(
     settle: int = 20,
     grip_settle: int = 200,
     grasp_thresh: float = 0.5,
+    video_out: "Path | None" = None,
+    video_fps: int = 30,
 ) -> RolloutResult:
     """Closed-loop VISUOMOTOR physics rollout. Same true-physics actuator/friction-grasp loop as
     ``rollout_policy``, but the policy sees only the ``front`` camera image + proprioception — the
     cube and target positions are NOT provided; the CNN must localise them from pixels. The frame
     is rendered through the same ``render_camera`` path the B2 demos used, so train/rollout framing
-    cannot drift.
+    cannot drift. If ``video_out`` is given, a 480x640 ``front`` view is also captured once per
+    executed action and written as an MP4 (separate from the 96x96 policy input).
     """
     import mujoco
 
@@ -156,6 +159,8 @@ def rollout_visuomotor_policy(
     cube_qadr: int = int(model.jnt_qposadr[cube_jid])
     tgt: np.ndarray = model.site(TARGET_SITE).pos
     renderer = mujoco.Renderer(model, height=_IMAGE_HW, width=_IMAGE_HW)
+    video_renderer = mujoco.Renderer(model, height=480, width=640) if video_out else None
+    video_frames: list[np.ndarray] = []
 
     data.qpos[cube_qadr : cube_qadr + 3] = (cube_xy[0], cube_xy[1], _Z_LO)
     data.qpos[cube_qadr + 3 : cube_qadr + 7] = (1.0, 0.0, 0.0, 0.0)
@@ -189,8 +194,18 @@ def rollout_visuomotor_policy(
                 if float(data.body("cube").xpos[2]) > start_z + 0.05:
                     lifted = True
             prev_closed = closed
+            if video_renderer is not None:
+                video_renderer.update_scene(data, camera="front")
+                video_frames.append(video_renderer.render())
 
     renderer.close()
+    if video_renderer is not None:
+        import imageio.v3 as iio  # type: ignore[import-not-found]
+
+        video_renderer.close()
+        out = Path(video_out)  # type: ignore[arg-type]
+        out.parent.mkdir(parents=True, exist_ok=True)
+        iio.imwrite(out, video_frames, fps=video_fps, codec="libx264")
     cube: np.ndarray = data.body("cube").xpos
     place_error = float(np.hypot(cube[0] - tgt[0], cube[1] - tgt[1]))
     success = bool(place_error < 0.05 and lifted)
