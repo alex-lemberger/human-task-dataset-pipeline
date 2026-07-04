@@ -6,7 +6,7 @@ import pytest
 pytest.importorskip("mujoco")
 pytest.importorskip("mink")
 
-from htdp.learn.dataset import generate_demos, sample_cube_positions
+from htdp.learn.dataset import CUBE_REGION, generate_demos, sample_cube_positions
 
 
 def test_sample_positions_deterministic_and_in_region():
@@ -17,6 +17,23 @@ def test_sample_positions_deterministic_and_in_region():
     # the x=0.46 column fails entirely (see docs/m2/a1-physics-grasp.md sweep), so x_lo = 0.48.
     for x, y in a:
         assert 0.48 <= x <= 0.55 and -0.20 <= y <= -0.10
+
+
+def test_sample_ood_positions_deterministic_disjoint_and_in_ood_band():
+    """OOD1: same friction-feasible x-band as CUBE_REGION, but a y-band never sampled in
+    training (docs/m2/ood1-generalization-scope.md — y=-0.30 edge fails the grasp per the
+    feasibility sweep, so the OOD band is clamped to y in [-0.29, -0.20])."""
+    from htdp.learn.dataset import sample_ood_positions
+
+    a = sample_ood_positions(30, seed=0)
+    b = sample_ood_positions(30, seed=0)
+    assert a == b  # deterministic
+
+    (xlo, xhi), (ylo, yhi) = CUBE_REGION
+    for x, y in a:
+        assert xlo <= x <= xhi
+        assert -0.29 <= y <= -0.20
+    assert set(a).isdisjoint(set(sample_cube_positions(30, seed=0)))
 
 
 def test_generate_demos_writes_lerobot_layout(tmp_path):

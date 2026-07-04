@@ -143,11 +143,29 @@ htdp eval-visuomotor  --demos demos --policy vm.pt --n-positions 40 --domain-ran
 htdp render-physics   --video out.mp4                    # teacher rollout from the front camera
 ```
 
+## Position generalization (OOD1)
+
+The headline 87.5% is measured **in-distribution** — freshly sampled but from the same region
+the policy trained on. To find the actual generalization edge, a plain (no-DR) visuomotor policy
+was evaluated on cube positions from a never-trained-on band immediately adjacent to the training
+region (same friction-feasible x-range; y shifted outside the trained y-band):
+
+| eval positions | held-out success (n=40) | 95% CI | mean place error |
+|---|---|---|---|
+| in-distribution (repro of the headline number) | 35/40 (87.5%) | [74%, 95%] | 0.050 m |
+| **out-of-distribution** (never-trained y-band) | **24/40 (60.0%)** | **[45%, 74%]** | 0.180 m |
+
+> Reports: [`docs/m2/ood1-eval-n40-indist.json`](m2/ood1-eval-n40-indist.json),
+> [`docs/m2/ood1-eval-n40-ood.json`](m2/ood1-eval-n40-ood.json). The physics teacher (baseline)
+> stays 100% on **both** position sets — the physics and IK generalize fine; the drop is
+> entirely the CNN policy failing to localize/act correctly on positions it never saw. This is
+> the honest number for "does it generalize beyond the training region": roughly half.
+
 ## Honest limitations
 
-- Held-out positions are **in-distribution interpolation** — freshly sampled (n=40, seeded,
-  disjoint from training) but from the same ~7×10 cm region the policy trained on, not novel
-  poses or distractors.
+- Success rates above are **for the trained cube region and the region tested in OOD1** — a
+  ~7×10 cm training band and an adjacent ~7×9 cm OOD band, both still on the table and within IK
+  reach. Positions far outside either band, or distractor objects, are untested.
 - One object, one fixed third-person camera. Domain randomization (C1) covers light, table
   color, camera pose, and cube friction/mass — but the cube color itself stays red (mild jitter
   only), so this is not yet a shape/context-generalization or sim-to-real claim.

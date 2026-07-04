@@ -33,6 +33,21 @@ def sample_cube_positions(n: int, seed: int) -> list[tuple[float, float]]:
     return [(float(x), float(y)) for x, y in zip(xs, ys)]
 
 
+# OOD1 (docs/m2/ood1-generalization-scope.md): same friction-feasible x-band as CUBE_REGION (x <
+# 0.48 fails the grasp entirely, per A1), but a y-band never sampled during training. The
+# feasibility sweep found the y=-0.30 edge column also fails the grasp (same failure mode as A1's
+# x=0.46 column), so the band is clamped to y in [-0.29, -0.20].
+OOD_REGION = ((0.48, 0.55), (-0.29, -0.20))  # ((x_lo, x_hi), (y_lo, y_hi))
+
+
+def sample_ood_positions(n: int, seed: int) -> list[tuple[float, float]]:
+    rng = np.random.default_rng(seed)
+    (xlo, xhi), (ylo, yhi) = OOD_REGION
+    xs = rng.uniform(xlo, xhi, n)
+    ys = rng.uniform(ylo, yhi, n)
+    return [(float(x), float(y)) for x, y in zip(xs, ys)]
+
+
 def _record_episode(
     cube_xy: tuple[float, float],
     ep_index: int,
