@@ -75,15 +75,21 @@ def _policy_at(
 
 
 def _visuomotor_at(
-    ckpt_path: Path, positions: list[tuple[float, float]]
+    ckpt_path: Path,
+    positions: list[tuple[float, float]],
+    *,
+    domain_randomize: bool = False,
+    dr_seed_base: int = 5000,
 ) -> dict[str, float | int]:
     from htdp.learn.rollout import load_visuomotor_policy, rollout_visuomotor_policy
 
     net, norm = load_visuomotor_policy(ckpt_path)
     errs: list[float] = []
     succ = 0
-    for cube_xy in positions:
-        r = rollout_visuomotor_policy(net, norm, cube_xy)
+    for i, cube_xy in enumerate(positions):
+        r = rollout_visuomotor_policy(
+            net, norm, cube_xy, domain_randomize=domain_randomize, dr_seed=dr_seed_base + i
+        )
         errs.append(r.place_error)
         succ += int(r.success)
     return _report(succ, errs)
@@ -109,10 +115,19 @@ def evaluate_visuomotor(
     positions: list[tuple[float, float]],
     *,
     out_path: Path | None = None,
+    domain_randomize: bool = False,
+    dr_seed_base: int = 5000,
 ) -> dict[str, dict[str, float | int]]:
-    """Closed-loop visuomotor policy (pixels + proprio) vs the physics friction-grasp baseline."""
+    """Closed-loop visuomotor policy (pixels + proprio) vs the physics friction-grasp baseline.
+
+    ``domain_randomize`` reports the C1 "novel DR seeds" robustness cell (docs/m2/
+    c1-domain-randomization-scope.md): each position gets its own scene randomization
+    (dr_seed_base + index), independent of any DR used at train time.
+    """
     report: dict[str, dict[str, float | int]] = {
-        "policy": _visuomotor_at(ckpt_path, positions),
+        "policy": _visuomotor_at(
+            ckpt_path, positions, domain_randomize=domain_randomize, dr_seed_base=dr_seed_base
+        ),
         "baseline": baseline_at(positions),
     }
     if out_path is not None:

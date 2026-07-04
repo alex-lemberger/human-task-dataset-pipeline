@@ -60,6 +60,41 @@ def test_visuomotor_rollout_runs_and_is_deterministic():
     assert a.cube_final_xy == b.cube_final_xy
 
 
+def test_visuomotor_rollout_domain_randomize_off_by_default(tmp_path):
+    """DR must be opt-in for eval too (docs/m2/c1-domain-randomization-scope.md): the canonical
+    B3 rollout gate/numbers must not shift silently."""
+    from unittest.mock import patch
+
+    from htdp.learn.policy import VisuomotorACTConfig, VisuomotorACTPolicy
+    from htdp.learn.rollout import rollout_visuomotor_policy
+
+    torch.manual_seed(0)
+    net = VisuomotorACTPolicy(VisuomotorACTConfig(chunk=8))
+    with patch("htdp.replay.domain_randomization.randomize_scene") as spy:
+        rollout_visuomotor_policy(net, _dummy_vm_norm(), (0.50, -0.15), max_chunks=2)
+    spy.assert_not_called()
+
+
+def test_visuomotor_rollout_domain_randomize_perturbs_scene_once(tmp_path):
+    """domain_randomize=True calls randomize_scene exactly once (per-episode, matching demo-gen's
+    per-episode DR), seeded by dr_seed."""
+    from unittest.mock import patch
+
+    from htdp.learn.policy import VisuomotorACTConfig, VisuomotorACTPolicy
+    from htdp.learn.rollout import rollout_visuomotor_policy
+
+    torch.manual_seed(0)
+    net = VisuomotorACTPolicy(VisuomotorACTConfig(chunk=8))
+    with patch(
+        "htdp.replay.domain_randomization.randomize_scene", side_effect=lambda *a, **k: None
+    ) as spy:
+        rollout_visuomotor_policy(
+            net, _dummy_vm_norm(), (0.50, -0.15), max_chunks=2,
+            domain_randomize=True, dr_seed=3,
+        )
+    spy.assert_called_once()
+
+
 def test_visuomotor_rollout_writes_video(tmp_path):
     pytest.importorskip("imageio")
     from htdp.learn.policy import VisuomotorACTConfig, VisuomotorACTPolicy

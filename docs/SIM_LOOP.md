@@ -32,6 +32,35 @@ the privileged coordinates.
   (legacy n=6: [`docs/demo/m25_visuomotor_eval.json`](demo/m25_visuomotor_eval.json))
 - Scripted physics teacher rollout: [`docs/demo/m25_physics_pick_place.mp4`](demo/m25_physics_pick_place.mp4)
 
+## Domain randomization robustness (C1)
+
+"What about sim-to-real?" — the #1 question a sim-only policy gets. A `randomize_scene(model,
+rng, cfg)` perturbs light direction/intensity, headlight, table color (full hue range), camera
+pose (±2 cm, ±2°), and cube friction/mass **at runtime**, per episode, after loading the
+canonical XML — no scene rewrite. The cube itself only gets a mild hue jitter and stays
+red-dominant (option A): it must still trip the same red-pixel visibility gate the B2/B3 pipeline
+already relies on. A visuomotor policy was retrained **with** this randomization on, then
+evaluated two ways at n=40 with Wilson 95% CI:
+
+| eval scene | held-out success (n=40) | 95% CI | mean place error |
+|------------|--------------------------|--------|-------------------|
+| canonical fixed scene (same setting as the B3/E1 table above) | 39/40 (97.5%) | [87%, 100%] | 0.020 m |
+| **novel** DR seeds (unseen light/table-color/camera/friction draws) | **40/40 (100%)** | **[91%, 100%]** | 0.015 m |
+
+> Reports: [`docs/m2/c1-eval-n40-canonical.json`](m2/c1-eval-n40-canonical.json),
+> [`docs/m2/c1-eval-n40-novel-dr.json`](m2/c1-eval-n40-novel-dr.json). Same physics baseline
+> (100%) both rows — DR doesn't touch the teacher or the grasp mechanics, only what the camera
+> sees.
+
+The DR-trained policy holds up under scene draws it never trained on — no measurable drop
+against its own canonical-scene number, and both cells sit on top of the no-DR E1 visuomotor
+number (87.5% [74%, 95%]). Two readings, both defensible: the extra visual variety in training
+acted as a regularizer: the CNN can no longer key off one fixed lighting/table/camera
+configuration, so it's forced to actually localize the (still-red) cube by color+shape rather
+than memorize a scene. Read this as "robust to the randomized nuisance factors it trained under,"
+not as a sim-to-real guarantee — the gap to a real camera/lighting/lens is untested (see Honest
+limitations).
+
 ## The loop
 
 ```
@@ -107,8 +136,10 @@ in distrusting the metric.
 ```bash
 uv sync --extra replay --extra dev
 htdp gen-demos       --out demos --n-train 40            # physics teacher + 96×96 images
+htdp gen-demos       --out demos_dr --n-train 40 --domain-randomize   # + per-episode scene DR (C1)
 htdp train-visuomotor --demos demos --out vm.pt --steps 6000
 htdp eval-visuomotor  --demos demos --policy vm.pt --n-positions 40   # success + 95% CI vs physics baseline
+htdp eval-visuomotor  --demos demos --policy vm.pt --n-positions 40 --domain-randomize   # eval under novel DR seeds
 htdp render-physics   --video out.mp4                    # teacher rollout from the front camera
 ```
 
@@ -117,15 +148,18 @@ htdp render-physics   --video out.mp4                    # teacher rollout from 
 - Held-out positions are **in-distribution interpolation** — freshly sampled (n=40, seeded,
   disjoint from training) but from the same ~7×10 cm region the policy trained on, not novel
   poses or distractors.
-- One object, one fixed third-person camera, no domain randomization — so no sim-to-real claim.
+- One object, one fixed third-person camera. Domain randomization (C1) covers light, table
+  color, camera pose, and cube friction/mass — but the cube color itself stays red (mild jitter
+  only), so this is not yet a shape/context-generalization or sim-to-real claim.
 - 87.5% [74%, 95%] is a real friction-grasp number, not a polished demo number; the failures are
   grasp slips on off-center approaches, and the CI is reported because n=40 still leaves a
   ±10 pp band.
 
 ## Where it could go
 
-Wrist camera; domain randomization (lighting / texture / object color) for a sim-to-real story;
-or driving a real SO-ARM100 now that the loop is validated in sim. The point of stopping here:
+Wrist camera; randomizing the cube's own color (forces shape/context localization, breaks the
+red-pixel gate — needs a geometry-based cube-visibility check instead); or driving a real
+SO-ARM100 now that the loop is validated in sim. The point of stopping here:
 the loop is closed and honest end-to-end — pixels to a friction grasp, no kinematic shortcut and
 no privileged state.
 

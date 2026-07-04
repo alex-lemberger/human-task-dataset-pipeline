@@ -84,6 +84,48 @@ def test_policy_beats_zero_on_held_out(tmp_path):
     assert success_rate > 0.0, f"policy learned nothing (success_rate={success_rate})"
 
 
+def test_evaluate_visuomotor_domain_randomize_off_by_default(tmp_path):
+    """C1: DR must be opt-in for eval too, so committed B3/E1 numbers don't shift silently
+    (docs/m2/c1-domain-randomization-scope.md)."""
+    from unittest.mock import patch
+
+    from htdp.learn.eval import evaluate_visuomotor
+    from htdp.learn.rollout import rollout_visuomotor_policy as real
+    from htdp.learn.train import train_visuomotor
+
+    ds = generate_demos(tmp_path / "demos", n_train=2, n_test=2, seed=0)
+    ckpt = train_visuomotor(ds, tmp_path / "vm.pt", steps=50, batch=16, chunk=8, seed=0)
+    positions = [tuple(p) for p in json.loads((ds / "meta" / "test_positions.json").read_text())]
+
+    with patch("htdp.learn.rollout.rollout_visuomotor_policy") as spy:
+        spy.side_effect = real
+        evaluate_visuomotor(ckpt, positions)
+    for _, kwargs in spy.call_args_list:
+        assert kwargs.get("domain_randomize", False) is False
+
+
+def test_evaluate_visuomotor_domain_randomize_uses_distinct_seed_per_position(tmp_path):
+    """Each held-out position gets its own DR seed (dr_seed_base + index) — the C1 'novel DR
+    seeds' eval cell needs independent scene draws per position, not one shared randomization."""
+    from unittest.mock import patch
+
+    from htdp.learn.eval import evaluate_visuomotor
+    from htdp.learn.rollout import rollout_visuomotor_policy as real
+    from htdp.learn.train import train_visuomotor
+
+    ds = generate_demos(tmp_path / "demos", n_train=2, n_test=2, seed=0)
+    ckpt = train_visuomotor(ds, tmp_path / "vm.pt", steps=50, batch=16, chunk=8, seed=0)
+    positions = [tuple(p) for p in json.loads((ds / "meta" / "test_positions.json").read_text())]
+
+    with patch("htdp.learn.rollout.rollout_visuomotor_policy") as spy:
+        spy.side_effect = real
+        evaluate_visuomotor(ckpt, positions, domain_randomize=True, dr_seed_base=5000)
+
+    seeds = [kwargs["dr_seed"] for _, kwargs in spy.call_args_list]
+    assert all(kwargs.get("domain_randomize") is True for _, kwargs in spy.call_args_list)
+    assert seeds == [5000, 5001]
+
+
 def test_visuomotor_policy_beats_zero_on_held_out(tmp_path):
     """B3 capstone gate: a policy that sees ONLY the front image + proprio (no privileged cube or
     target xyz) must achieve nonzero held-out success under true physics. Proves the CNN localises

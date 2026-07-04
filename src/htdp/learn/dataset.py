@@ -34,7 +34,13 @@ def sample_cube_positions(n: int, seed: int) -> list[tuple[float, float]]:
 
 
 def _record_episode(
-    cube_xy: tuple[float, float], ep_index: int, index_start: int, fps: int
+    cube_xy: tuple[float, float],
+    ep_index: int,
+    index_start: int,
+    fps: int,
+    *,
+    domain_randomize: bool = False,
+    dr_seed: int = 0,
 ):  # type: ignore[no-untyped-def]
     """Run the PHYSICS teacher once; return (rows, images).
 
@@ -43,6 +49,10 @@ def _record_episode(
     distinct waypoint pose — the 200-step grasp dwell is collapsed to one row, not over-sampled.
     For each row a 96x96 RGB frame is rendered from the ``front`` camera (B2), aligned 1:1 with
     the row by position; the stack is returned for a sidecar .npy so the parquet stays low-dim.
+
+    If ``domain_randomize``, the episode's own model is perturbed (docs/m2/
+    c1-domain-randomization-scope.md, option A: mild cube-hue jitter only, cube stays red so the
+    B2/B3 red-pixel gate stays valid) with a seed derived from ``dr_seed`` so it's reproducible.
     """
     import mujoco
 
@@ -50,11 +60,12 @@ def _record_episode(
     from htdp.replay.render import render_camera
     from htdp.replay.scene import TASK_SCENE_PHYSICS_XML
 
-    grasp_sid = mujoco.mj_name2id(
-        mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML)),
-        mujoco.mjtObj.mjOBJ_SITE,
-        "grasp_site",
-    )
+    model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
+    if domain_randomize:
+        from htdp.replay.domain_randomization import randomize_scene
+
+        randomize_scene(model, np.random.default_rng(dr_seed), None)
+    grasp_sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
 
     rows: list[dict[str, object]] = []
     images: list[np.ndarray] = []
@@ -81,7 +92,7 @@ def _record_episode(
             )
         )
 
-    run_physics_episode(cube_xy=cube_xy, on_sample=on_sample)
+    run_physics_episode(cube_xy=cube_xy, on_sample=on_sample, model=model)
     if renderer["r"] is not None:
         renderer["r"].close()
     return rows, np.asarray(images, dtype=np.uint8)
@@ -103,6 +114,7 @@ def generate_demos(
     n_test: int = 25,
     seed: int = 0,
     fps: int = 25,
+    domain_randomize: bool = False,
 ) -> Path:
     out_dir = Path(out_dir)
     data_dir = out_dir / "data" / "chunk-000"
@@ -118,7 +130,9 @@ def generate_demos(
     all_act: list[object] = []
     index = 0
     for ep, cube_xy in enumerate(train_pos):
-        rows, images = _record_episode(cube_xy, ep, index, fps)
+        rows, images = _record_episode(
+            cube_xy, ep, index, fps, domain_randomize=domain_randomize, dr_seed=seed + ep
+        )
         index += len(rows)
         pl.DataFrame(rows).write_parquet(data_dir / f"episode_{ep:06d}.parquet")
         # Image sidecar: uint8 [T, 96, 96, 3], aligned 1:1 with the parquet rows by frame_index.

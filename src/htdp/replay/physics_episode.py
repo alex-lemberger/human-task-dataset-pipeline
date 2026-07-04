@@ -57,14 +57,18 @@ def run_physics_episode(  # type: ignore[no-untyped-def]
     gripper_open: float = 255.0,
     gripper_close: float = 0.0,
     on_sample=None,
+    model=None,
 ) -> "PhysicsEpisodeResult":
+    """``model``, if given, is used as-is (e.g. already perturbed by
+    ``domain_randomization.randomize_scene``) instead of a fresh load from the canonical XML."""
     import mujoco
     import numpy as np
 
     from htdp.replay.arm_ik import solve_arm_ik
     from htdp.replay.scene import OBJECT_BODY, OBJECT_FREEJOINT, TARGET_SITE, TASK_SCENE_PHYSICS_XML
 
-    model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
+    if model is None:
+        model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
     data = mujoco.MjData(model)
     key = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "home")
     mujoco.mj_resetDataKeyframe(model, data, key)

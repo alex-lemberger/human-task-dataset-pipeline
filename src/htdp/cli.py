@@ -262,12 +262,17 @@ def gen_demos(
     n_train: int = typer.Option(100, "--n-train"),
     n_test: int = typer.Option(25, "--n-test"),
     seed: int = typer.Option(0, "--seed"),
+    domain_randomize: bool = typer.Option(
+        False, "--domain-randomize", help="C1: perturb light/table/camera/cube per episode"
+    ),
 ) -> None:
     """Generate randomized physics pick-place demos (friction grasp) in LeRobotDataset format."""
     try:
         from htdp.learn.dataset import generate_demos
 
-        generate_demos(out, n_train=n_train, n_test=n_test, seed=seed)
+        generate_demos(
+            out, n_train=n_train, n_test=n_test, seed=seed, domain_randomize=domain_randomize
+        )
     except (ImportError, ModuleNotFoundError) as exc:
         from htdp.learn.errors import LearnUnavailable
         typer.echo(f"error: {LearnUnavailable()}", err=True)
@@ -348,6 +353,13 @@ def eval_visuomotor_cmd(
         None, "--n-positions", help="evaluate at N freshly sampled positions instead of test_positions.json"
     ),
     eval_seed: int = typer.Option(2000, "--eval-seed", help="seed for --n-positions sampling"),
+    domain_randomize: bool = typer.Option(
+        False, "--domain-randomize",
+        help="C1: eval under novel per-position scene randomization (light/table/camera/cube)",
+    ),
+    dr_seed_base: int = typer.Option(
+        5000, "--dr-seed-base", help="base seed for --domain-randomize (position i uses base+i)"
+    ),
 ) -> None:
     """Roll out the visuomotor policy on held-out positions vs the physics baseline."""
     try:
@@ -358,7 +370,10 @@ def eval_visuomotor_cmd(
         raise typer.Exit(1) from exc
 
     positions = eval_positions(demos, n_positions, eval_seed=eval_seed)
-    report = evaluate_visuomotor(policy, positions, out_path=out)
+    report = evaluate_visuomotor(
+        policy, positions, out_path=out,
+        domain_randomize=domain_randomize, dr_seed_base=dr_seed_base,
+    )
     p, b = report["policy"], report["baseline"]
     typer.echo(
         f"visuomotor: success={p['success_rate']:.2f} ci95=[{p['ci95'][0]:.2f},{p['ci95'][1]:.2f}] "

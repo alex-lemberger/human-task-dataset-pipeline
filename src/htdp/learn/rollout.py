@@ -136,6 +136,8 @@ def rollout_visuomotor_policy(
     grasp_thresh: float = 0.5,
     video_out: "Path | None" = None,
     video_fps: int = 30,
+    domain_randomize: bool = False,
+    dr_seed: int = 0,
 ) -> RolloutResult:
     """Closed-loop VISUOMOTOR physics rollout. Same true-physics actuator/friction-grasp loop as
     ``rollout_policy``, but the policy sees only the ``front`` camera image + proprioception — the
@@ -143,6 +145,12 @@ def rollout_visuomotor_policy(
     is rendered through the same ``render_camera`` path the B2 demos used, so train/rollout framing
     cannot drift. If ``video_out`` is given, a 480x640 ``front`` view is also captured once per
     executed action and written as an MP4 (separate from the 96x96 policy input).
+
+    If ``domain_randomize``, the episode's own scene is perturbed once via
+    ``domain_randomization.randomize_scene`` (seeded by ``dr_seed``) before rollout — used to
+    report the C1 robustness number under novel lighting/table/camera/cube-friction shift
+    (docs/m2/c1-domain-randomization-scope.md). Default off so the canonical B3 numbers/gates
+    don't shift silently.
     """
     import mujoco
 
@@ -151,6 +159,10 @@ def rollout_visuomotor_policy(
     from htdp.replay.scene import OBJECT_FREEJOINT, TARGET_SITE, TASK_SCENE_PHYSICS_XML
 
     model = mujoco.MjModel.from_xml_path(str(TASK_SCENE_PHYSICS_XML))
+    if domain_randomize:
+        from htdp.replay.domain_randomization import randomize_scene
+
+        randomize_scene(model, np.random.default_rng(dr_seed), None)
     data = mujoco.MjData(model)
     key = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "home")
     mujoco.mj_resetDataKeyframe(model, data, key)

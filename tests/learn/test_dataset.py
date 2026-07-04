@@ -50,6 +50,41 @@ def test_generate_demos_writes_lerobot_layout(tmp_path):
     assert len(test_pos) == 1
 
 
+def test_generate_demos_domain_randomize_off_by_default_ignores_dr_seed(tmp_path):
+    """DR must be opt-in: passing domain_randomize=False (default) never calls randomize_scene,
+    so the existing B1/B2/B3 gates and committed numbers stay reproducible (docs/m2/
+    c1-domain-randomization-scope.md risk: "Keep DR default-off")."""
+    from unittest.mock import patch
+
+    with patch("htdp.replay.domain_randomization.randomize_scene") as spy:
+        generate_demos(tmp_path / "demos", n_train=2, n_test=1, seed=0)
+    spy.assert_not_called()
+
+
+def test_generate_demos_domain_randomize_varies_table_color_across_episodes(tmp_path):
+    """With domain_randomize=True, each episode gets an independently randomized scene (per-
+    episode seed derived from the base seed), so table/background color differs across episodes
+    -- while the red cube stays visible (option A, keeps the B2 red-pixel gate valid)."""
+    import numpy as np
+
+    out = generate_demos(
+        tmp_path / "demos", n_train=2, n_test=0, seed=0, domain_randomize=True
+    )
+    data_dir = out / "data" / "chunk-000"
+    imgs0 = np.load(data_dir / "episode_000000_image.npy")
+    imgs1 = np.load(data_dir / "episode_000001_image.npy")
+
+    # background corner (top-left, away from arm/cube) mean color differs across episodes
+    corner0 = imgs0[0, :10, :10].astype(float).mean(axis=(0, 1))
+    corner1 = imgs1[0, :10, :10].astype(float).mean(axis=(0, 1))
+    assert not np.allclose(corner0, corner1, atol=2.0)
+
+    # red cube still visible (red-pixel gate holds under option-A mild hue jitter)
+    for imgs in (imgs0, imgs1):
+        r, g, b = imgs[..., 0].astype(int), imgs[..., 1].astype(int), imgs[..., 2].astype(int)
+        assert int(np.count_nonzero((r > 120) & (g < 100) & (b < 100))) > 20
+
+
 def test_generate_demos_writes_aligned_image_sidecar(tmp_path):
     """B2: each episode gets a uint8 image stack [T,96,96,3] aligned 1:1 with its parquet rows.
 
