@@ -36,6 +36,7 @@ def test_baseline_succeeds(tmp_path):
     rep = baseline_at([(0.50, -0.15), (0.48, -0.12)])
     assert rep["n"] == 2
     assert rep["success_rate"] == 1.0  # scripted teacher always places
+    assert rep["ci95"] == pytest.approx(wilson_ci(2, 2))
 
 
 def test_evaluate_end_to_end_smoke(tmp_path):
@@ -45,6 +46,7 @@ def test_evaluate_end_to_end_smoke(tmp_path):
     rep = evaluate(ckpt, [tuple(p) for p in positions], out_path=tmp_path / "report.json")
     assert set(rep) == {"policy", "baseline"}
     assert "success_rate" in rep["policy"] and "success_rate" in rep["baseline"]
+    assert "ci95" in rep["policy"] and "ci95" in rep["baseline"]
     assert (tmp_path / "report.json").exists()
 
 
