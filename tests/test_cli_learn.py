@@ -33,3 +33,13 @@ def test_cli_gen_train_eval(tmp_path):
     assert report.exists()
     rep = json.loads(report.read_text())
     assert "policy" in rep and "baseline" in rep
+
+    # --n-positions: fresh eval positions instead of test_positions.json (E1)
+    report_n = tmp_path / "report_n.json"
+    r4 = runner.invoke(app, ["eval-policy", "--demos", str(demos),
+                             "--policy", str(policy), "--out", str(report_n),
+                             "--n-positions", "1"])
+    assert r4.exit_code == 0, r4.output
+    rep_n = json.loads(report_n.read_text())
+    assert rep_n["policy"]["n"] == 1  # dataset test split has 2 -> proves fresh-sample path
+    assert "ci95" in rep_n["policy"]

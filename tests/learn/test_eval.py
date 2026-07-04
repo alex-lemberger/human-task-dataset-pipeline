@@ -7,15 +7,53 @@ torch = pytest.importorskip("torch")
 pytest.importorskip("mujoco")
 pytest.importorskip("mink")
 
-from htdp.learn.dataset import generate_demos
-from htdp.learn.eval import baseline_at, evaluate
+from htdp.learn.dataset import CUBE_REGION, generate_demos
+from htdp.learn.eval import EVAL_SEED, baseline_at, eval_positions, evaluate, wilson_ci
 from htdp.learn.train import train
+
+
+def test_wilson_ci_known_values():
+    # Wilson score interval, z=1.96. Reference values computed from the closed form.
+    lo, hi = wilson_ci(4, 6)
+    assert lo == pytest.approx(0.3000, abs=1e-3)
+    assert hi == pytest.approx(0.9032, abs=1e-3)
+    lo, hi = wilson_ci(27, 40)
+    assert lo == pytest.approx(0.5202, abs=1e-3)
+    assert hi == pytest.approx(0.7992, abs=1e-3)
+
+
+def test_wilson_ci_edges():
+    lo, hi = wilson_ci(0, 10)
+    assert lo == 0.0
+    assert 0.0 < hi < 0.5
+    lo, hi = wilson_ci(10, 10)
+    assert hi == 1.0
+    assert 0.5 < lo < 1.0
+    assert wilson_ci(0, 0) == (0.0, 1.0)  # no data -> no information
+
+
+def test_eval_positions_fresh_sample(tmp_path):
+    """--n-positions path: fresh in-region positions from EVAL_SEED, disjoint from the
+    legacy test_positions.json split (train=seed, test=seed+1000, eval=2000)."""
+    ds = generate_demos(tmp_path / "demos", n_train=2, n_test=3, seed=0)
+    legacy = eval_positions(ds, n_positions=None)
+    assert len(legacy) == 3  # no n -> test_positions.json, unchanged default
+
+    fresh = eval_positions(ds, n_positions=5)
+    assert len(fresh) == 5
+    (xlo, xhi), (ylo, yhi) = CUBE_REGION
+    for x, y in fresh:
+        assert xlo <= x <= xhi and ylo <= y <= yhi
+    assert set(fresh).isdisjoint(set(legacy))
+    assert fresh == eval_positions(ds, n_positions=5)  # deterministic
+    assert fresh != eval_positions(ds, n_positions=5, eval_seed=EVAL_SEED + 1)
 
 
 def test_baseline_succeeds(tmp_path):
     rep = baseline_at([(0.50, -0.15), (0.48, -0.12)])
     assert rep["n"] == 2
     assert rep["success_rate"] == 1.0  # scripted teacher always places
+    assert rep["ci95"] == pytest.approx(wilson_ci(2, 2))
 
 
 def test_evaluate_end_to_end_smoke(tmp_path):
@@ -25,6 +63,7 @@ def test_evaluate_end_to_end_smoke(tmp_path):
     rep = evaluate(ckpt, [tuple(p) for p in positions], out_path=tmp_path / "report.json")
     assert set(rep) == {"policy", "baseline"}
     assert "success_rate" in rep["policy"] and "success_rate" in rep["baseline"]
+    assert "ci95" in rep["policy"] and "ci95" in rep["baseline"]
     assert (tmp_path / "report.json").exists()
 
 
