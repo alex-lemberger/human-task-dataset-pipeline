@@ -9,23 +9,27 @@ action-chunking transformer policy → closed-loop rollout, built and debugged e
 interesting part is not that it works — it's the specific ways it *looked* like it worked while
 being broken, and how each was caught.
 
-| policy | observation | held-out success | mean place error |
-|--------|-------------|------------------|------------------|
-| baseline (scripted physics teacher) | privileged state | 6/6 (100%) | 0.008 m |
-| state ACT | joints + eef + **cube xyz + target xyz** + finger width | 4/6 (67%) | 0.097 m |
-| **visuomotor ACT** | **96×96 camera image + proprioception only** | **4/6 (67%)** | 0.089 m |
+| policy | observation | held-out success (n=40) | 95% CI | mean place error |
+|--------|-------------|-------------------------|--------|------------------|
+| baseline (scripted physics teacher) | privileged state | 40/40 (100%) | [91%, 100%] | 0.008 m |
+| state ACT | joints + eef + **cube xyz + target xyz** + finger width | 33/40 (82.5%) | [68%, 91%] | 0.058 m |
+| **visuomotor ACT** | **96×96 camera image + proprioception only** | **35/40 (87.5%)** | [74%, 95%] | 0.050 m |
 
-> *Mean place error is over all 6 held-out positions, so it is dominated by the 2 grasp-slip
-> failures (~0.25 m each); the 4 successful placements land within 0.006–0.019 m. That a constant
-> ~0.5-m-region task scores a sub-0.1-m mean is the placement quality, not the failure rate —
-> read the success column for "did it work," the error column for "how clean when it did."*
+> *n=40 freshly sampled held-out positions (seeded, disjoint from the train and test splits),
+> Wilson 95% intervals. An earlier n=6 eval read 4/6 (67%) for both policies — inside these
+> intervals, and a lesson in why six episodes is an anecdote, not a measurement. Mean place error
+> is averaged over all positions, so it is dominated by the grasp-slip failures (~0.25 m each);
+> successful placements land within a few centimetres. Read the success column for "did it
+> work," the error column for "how clean when it did."*
 
-The visuomotor policy **matches** the state-based policy while seeing none of the privileged
-coordinates.
+The visuomotor policy **matches** the state-based policy (overlapping CIs) while seeing none of
+the privileged coordinates.
 
 - **Visuomotor policy rollout** (the headline — pixels in, friction grasp out):
   [`docs/demo/m25_visuomotor_rollout.mp4`](demo/m25_visuomotor_rollout.mp4)
-- Eval numbers: [`docs/demo/m25_visuomotor_eval.json`](demo/m25_visuomotor_eval.json)
+- Eval reports (n=40): [`docs/m2/e1-eval-n40-visuomotor.json`](m2/e1-eval-n40-visuomotor.json),
+  [`docs/m2/e1-eval-n40-state.json`](m2/e1-eval-n40-state.json)
+  (legacy n=6: [`docs/demo/m25_visuomotor_eval.json`](demo/m25_visuomotor_eval.json))
 - Scripted physics teacher rollout: [`docs/demo/m25_physics_pick_place.mp4`](demo/m25_physics_pick_place.mp4)
 
 ## The loop
@@ -76,9 +80,9 @@ in distrusting the metric.
   a true friction grasp on *both* sides — teacher and rollout — so the same actions mean the same
   thing.
 
-- **Friction compounds error.** Under a true friction grasp, held-out success is 67%, not the
-  100% the kinematic attach reported. A slightly-off approach slips the grasp; the attach used to
-  paper over exactly that. The lower number is the honest one.
+- **Friction compounds error.** Under a true friction grasp, held-out success is ~80–90%, not
+  the 100% the kinematic attach reported. A slightly-off approach slips the grasp; the attach
+  used to paper over exactly that. The lower number is the honest one.
 
 - **A blank camera still renders something.** The image gate doesn't assert "frame is non-blank"
   — a camera pointed at a wall passes that. It asserts the red cube's pixels are present, so a
@@ -104,17 +108,19 @@ in distrusting the metric.
 uv sync --extra replay --extra dev
 htdp gen-demos       --out demos --n-train 40            # physics teacher + 96×96 images
 htdp train-visuomotor --demos demos --out vm.pt --steps 6000
-htdp eval-visuomotor  --demos demos --policy vm.pt       # success vs physics baseline
+htdp eval-visuomotor  --demos demos --policy vm.pt --n-positions 40   # success + 95% CI vs physics baseline
 htdp render-physics   --video out.mp4                    # teacher rollout from the front camera
 ```
 
 ## Honest limitations
 
-- Held-out positions are **in-distribution interpolation** — the same ~7×10 cm region the policy
-  trained on, not novel poses or distractors.
+- Held-out positions are **in-distribution interpolation** — freshly sampled (n=40, seeded,
+  disjoint from training) but from the same ~7×10 cm region the policy trained on, not novel
+  poses or distractors.
 - One object, one fixed third-person camera, no domain randomization — so no sim-to-real claim.
-- 67% is a real friction-grasp number, not a polished demo number; the remaining failures are
-  grasp slips on off-center approaches.
+- 87.5% [74%, 95%] is a real friction-grasp number, not a polished demo number; the failures are
+  grasp slips on off-center approaches, and the CI is reported because n=40 still leaves a
+  ±10 pp band.
 
 ## Where it could go
 

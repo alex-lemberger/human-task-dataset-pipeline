@@ -8,9 +8,9 @@ robot arm via inverse kinematics.
 > **🤖 Robot-learning sim loop → [docs/SIM_LOOP.md](docs/SIM_LOOP.md)**
 > A Franka Panda picks-and-places from a single camera image under true contact physics — a
 > from-scratch MuJoCo + LeRobot + ACT imitation loop (scripted physics teacher → demos →
-> transformer policy → closed-loop friction-grasp rollout). The visuomotor policy hits 67%
-> held-out from pixels alone, matching a state-based policy that was handed the object
-> coordinates. This is the headline engineering work.
+> transformer policy → closed-loop friction-grasp rollout). The visuomotor policy hits 87.5%
+> (95% CI [74%, 95%], n=40) held-out from pixels alone, matching a state-based policy that was
+> handed the object coordinates. This is the headline engineering work.
 
 ## Install
 
