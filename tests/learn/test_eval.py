@@ -7,8 +7,8 @@ torch = pytest.importorskip("torch")
 pytest.importorskip("mujoco")
 pytest.importorskip("mink")
 
-from htdp.learn.dataset import generate_demos
-from htdp.learn.eval import baseline_at, evaluate, wilson_ci
+from htdp.learn.dataset import CUBE_REGION, generate_demos
+from htdp.learn.eval import EVAL_SEED, baseline_at, eval_positions, evaluate, wilson_ci
 from htdp.learn.train import train
 
 
@@ -30,6 +30,23 @@ def test_wilson_ci_edges():
     assert hi == 1.0
     assert 0.5 < lo < 1.0
     assert wilson_ci(0, 0) == (0.0, 1.0)  # no data -> no information
+
+
+def test_eval_positions_fresh_sample(tmp_path):
+    """--n-positions path: fresh in-region positions from EVAL_SEED, disjoint from the
+    legacy test_positions.json split (train=seed, test=seed+1000, eval=2000)."""
+    ds = generate_demos(tmp_path / "demos", n_train=2, n_test=3, seed=0)
+    legacy = eval_positions(ds, n_positions=None)
+    assert len(legacy) == 3  # no n -> test_positions.json, unchanged default
+
+    fresh = eval_positions(ds, n_positions=5)
+    assert len(fresh) == 5
+    (xlo, xhi), (ylo, yhi) = CUBE_REGION
+    for x, y in fresh:
+        assert xlo <= x <= xhi and ylo <= y <= yhi
+    assert set(fresh).isdisjoint(set(legacy))
+    assert fresh == eval_positions(ds, n_positions=5)  # deterministic
+    assert fresh != eval_positions(ds, n_positions=5, eval_seed=EVAL_SEED + 1)
 
 
 def test_baseline_succeeds(tmp_path):

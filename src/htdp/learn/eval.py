@@ -8,6 +8,23 @@ import numpy as np
 
 from htdp.learn.rollout import load_policy, rollout_policy
 
+# Dedicated eval seed, disjoint from the dataset splits (train=seed, test=seed+1000; all
+# committed datasets use seed=0). Fresh eval positions must never echo either split.
+EVAL_SEED = 2000
+
+
+def eval_positions(
+    demos_dir: Path, n_positions: int | None, *, eval_seed: int = EVAL_SEED
+) -> list[tuple[float, float]]:
+    """Positions to evaluate at: the dataset's legacy test split by default, or n freshly
+    sampled in-region positions (seeded, reproducible) when n_positions is given."""
+    if n_positions is None:
+        raw = json.loads((Path(demos_dir) / "meta" / "test_positions.json").read_text())
+        return [tuple(p) for p in raw]
+    from htdp.learn.dataset import sample_cube_positions
+
+    return [tuple(p) for p in sample_cube_positions(n_positions, eval_seed)]
+
 
 def wilson_ci(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """Wilson score 95% interval for a binomial proportion (closed form, no scipy)."""
