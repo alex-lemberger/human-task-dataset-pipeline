@@ -27,6 +27,8 @@ the privileged coordinates.
 
 - **Visuomotor policy rollout** (the headline — pixels in, friction grasp out):
   [`docs/demo/m25_visuomotor_rollout.mp4`](demo/m25_visuomotor_rollout.mp4)
+  ([GIF](demo/m25_visuomotor_rollout.gif),
+  [narrated/captioned version](demo/m25_visuomotor_rollout_narrated.mp4))
 - Eval reports (n=40): [`docs/m2/e1-eval-n40-visuomotor.json`](m2/e1-eval-n40-visuomotor.json),
   [`docs/m2/e1-eval-n40-state.json`](m2/e1-eval-n40-state.json)
   (legacy n=6: [`docs/demo/m25_visuomotor_eval.json`](demo/m25_visuomotor_eval.json))

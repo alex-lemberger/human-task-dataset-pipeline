@@ -12,6 +12,10 @@ robot arm via inverse kinematics.
 > (95% CI [74%, 95%], n=40) held-out from pixels alone, matching a state-based policy that was
 > handed the object coordinates. This is the headline engineering work.
 
+![Visuomotor policy: pixels to a friction grasp](docs/demo/m25_visuomotor_rollout.gif)
+
+Narrated walkthrough (captions): [`docs/demo/m25_visuomotor_rollout_narrated.mp4`](docs/demo/m25_visuomotor_rollout_narrated.mp4)
+
 ## Install
 
 ```bash
@@ -64,7 +68,7 @@ top-down and places it on a target — the teleoperation-style data-collection p
 (ALOHA / GELLO / LeRobot), driven by human motion. Headless and deterministic; `--video`
 renders an MP4.
 
-![M1 pick-and-place demo](docs/demo/m1_pick_place.mp4)
+![M1 pick-and-place demo](docs/demo/m1_pick_place.gif)
 
 ## Imitation policy (M2)
 
@@ -82,6 +86,18 @@ drawn from the **same 10×10 cm region** as training (in-distribution interpolat
 execution is **kinematic** (the policy reproduces the teacher's gripper trajectory; no actuator
 dynamics). State-based observations (joint + object poses); demos are stored in LeRobotDataset
 format. Visuomotor (pixels) is the M2.5 extension.
+
+## Portfolio summary
+
+One-line version for a CV / LinkedIn:
+
+> Built a from-scratch visuomotor imitation-learning pipeline (MuJoCo + LeRobot + ACT
+> transformer): a Franka Panda picks-and-places from a single camera image under true contact
+> physics, hitting 87.5% held-out success (n=40, 95% CI [74%, 95%]) with zero privileged state —
+> including a domain-randomization robustness study (100% under novel scene randomization) and
+> an honest out-of-distribution generalization measurement (60% outside the training region).
+
+Full write-up, war stories, and limitations: [docs/SIM_LOOP.md](docs/SIM_LOOP.md).
 
 ## Notes
 
