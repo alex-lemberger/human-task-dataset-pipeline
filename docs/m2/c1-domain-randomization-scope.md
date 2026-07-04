@@ -1,8 +1,12 @@
-# M2.5 C1 — Domain Randomization (next-session scope)
+# M2.5 C1 — Domain Randomization (scoped milestone)
 
 **Goal:** harden the B3 visuomotor policy against appearance shift, and report a robustness
 number. Answers the #1 interview question about a sim policy ("what about sim-to-real?"). Still
 0 €. Builds directly on B3; no teacher/physics changes.
+
+**Depends on E1** (docs/m2/e1-eval-n-scope.md): all C1 robustness numbers are reported at n≥30
+with Wilson 95% CI via E1's eval machinery — a DR claim on n=6 is the same anecdote problem E1
+exists to fix. Run E1 first.
 
 ## Approach — runtime model-field edits, no XML rewrite
 
@@ -35,12 +39,14 @@ The B2/B3 cube is red; the image gate asserts **red pixels present**, and the CN
 
 ## Evaluation — the robustness number
 
-Train visuomotor **with** DR (A), then eval three ways and tabulate:
-1. canonical fixed scene (the B3 setting) — should stay ~67%,
+Train visuomotor **with** DR (A), then eval three ways and tabulate (each cell = n≥30 fresh
+positions via E1's `--n-positions`, reported with Wilson 95% CI):
+1. canonical fixed scene (the B3 setting) — should stay near the E1 baseline number,
 2. **novel** DR seeds (unseen lighting/background/camera) — the headline robustness number,
 3. (optional) the no-DR B3 policy on novel DR seeds — to show DR *helped* (expected: it tanks).
 
-Gate test: DR-trained policy beats zero on held-out **under novel randomization**.
+Gate test: DR-trained policy beats zero on held-out **under novel randomization** (gate itself
+stays small-n for suite time; the n≥30 table is the offline CLI run, as in E1).
 
 ## Build order (TDD, ~1 session)
 
