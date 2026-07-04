@@ -9,6 +9,17 @@ import numpy as np
 from htdp.learn.rollout import load_policy, rollout_policy
 
 
+def wilson_ci(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score 95% interval for a binomial proportion (closed form, no scipy)."""
+    if n == 0:
+        return (0.0, 1.0)
+    p = successes / n
+    denom = 1.0 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    half = (z / denom) * float(np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)))
+    return (max(0.0, center - half), min(1.0, center + half))
+
+
 def baseline_at(positions: list[tuple[float, float]]) -> dict[str, float | int]:
     # Baseline = the A2 physics friction-grasp teacher (the same executor the policy imitates),
     # so policy-vs-baseline is apples-to-apples under true physics.

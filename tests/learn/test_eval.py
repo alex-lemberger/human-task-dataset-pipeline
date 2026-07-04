@@ -8,8 +8,28 @@ pytest.importorskip("mujoco")
 pytest.importorskip("mink")
 
 from htdp.learn.dataset import generate_demos
-from htdp.learn.eval import baseline_at, evaluate
+from htdp.learn.eval import baseline_at, evaluate, wilson_ci
 from htdp.learn.train import train
+
+
+def test_wilson_ci_known_values():
+    # Wilson score interval, z=1.96. Reference values computed from the closed form.
+    lo, hi = wilson_ci(4, 6)
+    assert lo == pytest.approx(0.3000, abs=1e-3)
+    assert hi == pytest.approx(0.9032, abs=1e-3)
+    lo, hi = wilson_ci(27, 40)
+    assert lo == pytest.approx(0.5202, abs=1e-3)
+    assert hi == pytest.approx(0.7992, abs=1e-3)
+
+
+def test_wilson_ci_edges():
+    lo, hi = wilson_ci(0, 10)
+    assert lo == 0.0
+    assert 0.0 < hi < 0.5
+    lo, hi = wilson_ci(10, 10)
+    assert hi == 1.0
+    assert 0.5 < lo < 1.0
+    assert wilson_ci(0, 0) == (0.0, 1.0)  # no data -> no information
 
 
 def test_baseline_succeeds(tmp_path):
