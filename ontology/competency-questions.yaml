@@ -40,3 +40,8 @@ questions:
     question: Which tasks are variants of a canonical task (sim pick-and-place vs real reach-grasp-place)?
     needs: {classes: [task], relations: [variant_of]}
     requires_instances: true
+
+  - id: cq_failure_modes
+    question: Which failure modes can occur in which phase (for per-phase eval breakdown of failed trials)?
+    needs: {classes: [failure_mode, phase], relations: [occurs_in]}
+    requires_instances: true

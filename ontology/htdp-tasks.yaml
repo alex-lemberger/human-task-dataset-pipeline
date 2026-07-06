@@ -8,7 +8,7 @@
 
 ontology:
   id: htdp-tasks
-  version: 0.1.0
+  version: 0.2.0
   description: >
     Tasks, phases, actions, objects, effectors, and event markers for annotating
     HTDP demonstrations, aligned across real capture (reach-grasp-place protocol)
@@ -55,6 +55,11 @@ relations:
     domain: task
     range: task
     description: Task realizes the same goal structure as a canonical task in another setting (e.g. sim vs real capture).
+  - id: occurs_in
+    label: occurs in
+    domain: failure_mode
+    range: phase
+    description: The phase during which a failure mode manifests, for per-phase breakdown of failed trials.
 
 classes:
   # --- roots ---
@@ -156,6 +161,26 @@ classes:
     definition: Withdrawing the empty effector from the workspace back to rest.
     is_a: action
 
+  # --- failure modes (per-phase eval breakdown; observed in M2.5 evals, needed for R1 real trials) ---
+  - id: failure_mode
+    label: Failure Mode
+    definition: A way a trial deviates from its task goal, attributable to a phase of the demonstration.
+    is_a: process
+  - id: missed_grasp
+    label: Missed Grasp
+    definition: The effector closes without attaining a stable hold on the object.
+    is_a: failure_mode
+    examples: [gripper closes beside cube, fingers slip off cylinder]
+  - id: object_drop
+    label: Object Drop
+    definition: A held object leaves the effector unintentionally before the target is reached.
+    is_a: failure_mode
+    synonyms: [grasp slip]
+  - id: misplacement
+    label: Misplacement
+    definition: The object is set down outside the target zone or in an unstable pose.
+    is_a: failure_mode
+
   # --- physical objects ---
   - id: manipulable_object
     label: Manipulable Object
@@ -251,3 +276,8 @@ edges:
   - [place, has_target, target_zone]
   # sim/real alignment (cq_sim_real_variant)
   - [pick_place, variant_of, reach_grasp_place]
+  # failure modes per phase (cq_failure_modes)
+  - [missed_grasp, occurs_in, reach_phase]
+  - [object_drop, occurs_in, transport_phase]
+  - [object_drop, occurs_in, place_phase]
+  - [misplacement, occurs_in, place_phase]
