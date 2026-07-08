@@ -39,9 +39,6 @@ are available (per the design doc's sequencing decision):**
   taxonomy lists one — there is currently no way to detect a wrong-pick at this layer
   since `PickResult` carries no object-identity-verification signal. This is a real
   scope gap for a future task, not a bug in what was built.
-- `uv.lock` remains locally modified after Task 3 (post `uv sync --all-extras` to
-  resolve shapesort's new dependencies) — a fresh clone must run `uv sync --all-extras`
-  once before tests will find `opencv-python-headless`, `openai-whisper`, and `pillow`.
 
 **Next session, once R1 closes and hardware is available:** R1a-style bring-up for this
 mile — confirm toy hole colors, wire live ASR, record SmolVLA fine-tune demos, retune HSV
