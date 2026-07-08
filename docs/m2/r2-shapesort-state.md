@@ -6,8 +6,8 @@
   orientation detector, tested against synthetic PIL fixtures (single shape, distractor
   scene, absent target, relative-rotation tracking).
 - `htdp.shapesort.orchestrator.run_trial` — retry + classical-fallback + insert control
-  loop, tested with injected fakes covering every branch in the design doc's error-handling
-  section.
+  loop, tested with injected fakes covering the ASR-miss/retry/fallback/grasp-fail/insert-fail
+  branches specifically.
 - `htdp.shapesort.eval.aggregate` — Wilson-CI + failure-taxonomy + fallback-rate report,
   reusing `htdp.learn.eval.wilson_ci`.
 - CLI: `htdp shapesort-eval-report --trials trials.jsonl --out report.json`.
@@ -23,6 +23,10 @@ are available (per the design doc's sequencing decision):**
 - Live camera integration of `detect_piece`/`detect_hole` — the HSV ranges in
   `classical_detect.py` are tuned against synthetic fixtures, NOT real camera footage;
   expect to retune `_HSV_RANGES` once real images exist.
+- Confidence-gated re-grasp/re-orient branch — low-confidence orientation estimate before
+  insertion (occluded contour scenario) should trigger re-grasp instead of forcing the insert.
+  `Detection.confidence` is computed by `classical_detect.py` but nothing currently reads it
+  to make this decision in `orchestrator.run_trial`. Not implemented or tested yet.
 - The real insertion servo loop (wrist rotation + closed-loop visual servo + stall/
   current-limit abort) — `InsertResult.aborted_stall` exists as a field for this to
   report into, but no hardware-side implementation exists yet.
