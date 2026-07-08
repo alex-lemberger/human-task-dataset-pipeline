@@ -58,7 +58,11 @@ def test_detect_piece_finds_single_shape() -> None:
     det = detect_piece(_to_bgr(img), "red", "triangle")
     assert det is not None
     assert abs(det.cx - 100) <= 4
-    assert abs(det.cy - 100) <= 4
+    # 113.33 is the triangle's true area centroid (average of its three vertices:
+    # (100,60), (60,140), (140,140)), not an approximation -- do not "fix" this back
+    # to 100. The moments centroid is rotation-covariant, unlike a bounding-box center,
+    # which is why detection uses cv2.moments() rather than cv2.boundingRect().
+    assert abs(det.cy - 113) <= 4
     assert det.confidence > 0.0
 
 

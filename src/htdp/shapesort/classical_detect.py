@@ -64,13 +64,14 @@ def _find_colored_shape_contour(image: np.ndarray, color: str, shape: str) -> np
 
 
 def _detection_from_contour(contour: np.ndarray, image_area: int) -> Detection:
-    # Use the axis-aligned bounding-box center rather than the area-moment centroid:
-    # for asymmetric shapes like triangles, the area centroid sits well off the shape's
-    # visual/geometric center (skewed toward the base), which is not what a grasp-point
-    # or hole-center consumer wants.
-    x, y, w, h = cv2.boundingRect(contour)
-    cx = int(x + w / 2)
-    cy = int(y + h / 2)
+    # Use the area-moment centroid rather than the axis-aligned bounding-box center:
+    # bounding-box center is not rotation-covariant (it drifts as an asymmetric shape
+    # rotates, since the box re-fits to the rotated silhouette), whereas the moments
+    # centroid rotates rigidly with the shape. Since this detector's job is to locate
+    # arbitrarily-rotated pieces (see angle_deg), moments is the correct general choice.
+    moments = cv2.moments(contour)
+    cx = int(moments["m10"] / moments["m00"])
+    cy = int(moments["m01"] / moments["m00"])
     _, _, angle = cv2.minAreaRect(contour)
     confidence = min(1.0, cv2.contourArea(contour) / image_area * 20)
     return Detection(cx=cx, cy=cy, angle_deg=float(angle), confidence=confidence)
