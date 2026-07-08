@@ -444,3 +444,30 @@ def catalog_query(
         raise typer.Exit(1) from exc
     for session_id in ids:
         typer.echo(session_id)
+
+
+@app.command(name="shapesort-eval-report")
+def shapesort_eval_report(
+    trials: Path = typer.Option(..., "--trials", help="JSONL file, one {outcome, used_fallback} object per line"),
+    out: Path = typer.Option(..., "--out", help="report JSON path"),
+) -> None:
+    """Aggregate R2 shape-sort trial logs into a success-rate + Wilson-CI report."""
+    try:
+        from htdp.shapesort.eval import TrialLog, aggregate
+    except ImportError as exc:
+        from htdp.shapesort.errors import ShapesortUnavailable
+        typer.echo(f"error: {ShapesortUnavailable()}", err=True)
+        raise typer.Exit(1) from exc
+
+    import json
+
+    logs = []
+    for line in trials.read_text().splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        logs.append(TrialLog(outcome=row["outcome"], used_fallback=row["used_fallback"]))
+
+    report = aggregate(logs)
+    out.write_text(json.dumps(report, indent=2))
+    typer.echo(f"n={report['n']} success_rate={report['success_rate']:.3f} ci95={report['ci95']}")
