@@ -6,10 +6,11 @@ from __future__ import annotations
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from htdp.serve.jobs import JobManager
+from htdp.serve.jobs import JobKindError, JobManager
+from htdp.serve.models import StartJobRequest
 from htdp.serve.status import read_status
 
 
@@ -47,5 +48,28 @@ def create_app(data_dir: Path, manager: JobManager | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="job not found")
         dumped: dict[str, object] = got.model_dump()
         return dumped
+
+    @app.post("/jobs")
+    async def start_job(req: StartJobRequest) -> dict[str, object]:
+        try:
+            job = await app.state.manager.submit(req.kind, req.args)
+        except JobKindError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"job_id": job.id}
+
+    @app.post("/jobs/{job_id}/cancel")
+    async def cancel_job(job_id: str) -> dict[str, object]:
+        ok = await app.state.manager.cancel(job_id)
+        return {"cancelled": ok}
+
+    @app.websocket("/jobs/{job_id}/logs")
+    async def job_logs(ws: WebSocket, job_id: str) -> None:
+        await ws.accept()
+        try:
+            async for msg in app.state.manager.subscribe(job_id):
+                await ws.send_json(msg.model_dump(exclude_none=True))
+        except WebSocketDisconnect:
+            return
+        await ws.close()
 
     return app
