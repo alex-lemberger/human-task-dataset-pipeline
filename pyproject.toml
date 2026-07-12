@@ -18,6 +18,11 @@ ingest = ["pyxdf>=1.16"]
 rosbag = ["rosbags>=0.10"]
 shapesort = ["opencv-python-headless>=4.9", "openai-whisper>=20231117", "pillow>=10.0"]
 dev = ["pytest>=8.0", "ruff>=0.5", "mypy>=1.10", "pyyaml>=6.0"]
+serve = [
+    "fastapi>=0.139.0",
+    "httpx>=0.28.1",
+    "uvicorn>=0.51.0",
+]
 
 [project.scripts]
 htdp = "htdp.cli:app"
