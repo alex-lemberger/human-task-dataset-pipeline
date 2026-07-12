@@ -4,6 +4,16 @@ This project is a **consent-based human-task dataset pipeline for robotics**. Th
 product unit is a **dataset release**, not an app. v0.1 is a synthetic, filesystem-only
 spine.
 
+**Companion repo (control-center dashboard).** The Angular frontend that views this
+pipeline's status and runs its jobs from a UI lives at `~/neurofeedback-lang-app`
+(separate repo). It consumes `htdp serve` (the FastAPI read + job-runner surface, optional
+`serve` extra, localhost-only) via its `/lab` section. Integration doc + contract:
+`~/neurofeedback-lang-app/docs/INTEGRATION.md`. The contract source of truth is
+`src/htdp/serve/models.py` here, hand-mirrored by the app's `pipeline.models.ts` — change
+both together. This repo stays the product (dataset + ML); the app is a consumer — keep
+them separate. (`htdp serve` is the one sanctioned exception to the "no servers" rule:
+read-only + job-runner, localhost, optional extra — see `docs/ARCHITECTURE.md`.)
+
 ## Hard rules
 - Do NOT add servers (Postgres/MinIO/FastAPI), Docker, dashboards, real hardware,
   LSL/XDF, video, EEG, or ROS in v0.1.
