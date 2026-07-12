@@ -13,10 +13,11 @@ def _count_dirs(p: Path) -> int:
 
 
 def _demos_count(data_dir: Path) -> CountBlock | None:
-    meta = data_dir / "demos" / "meta"
-    if not meta.is_dir():
+    episodes_path = data_dir / "demos" / "meta" / "episodes.jsonl"
+    if not episodes_path.is_file():
         return None
-    return CountBlock(count=sum(1 for _ in meta.glob("*")))
+    with episodes_path.open() as fh:
+        return CountBlock(count=sum(1 for line in fh if line.strip()))
 
 
 def read_status(data_dir: Path, manager: JobManager) -> PipelineStatus:
