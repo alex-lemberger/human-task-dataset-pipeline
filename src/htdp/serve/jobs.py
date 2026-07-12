@@ -199,11 +199,19 @@ class JobManager:
             q.put_nowait(None)
         else:
             run.subscribers.append(q)
-        while True:
-            msg = await q.get()
-            if msg is None:
-                return
-            yield msg
+        try:
+            while True:
+                msg = await q.get()
+                if msg is None:
+                    return
+                yield msg
+        finally:
+            # Ensure an abandoned subscriber (WS disconnect before job completion) is
+            # pruned once this generator is closed/GC'd, so emit() stops pushing to it.
+            try:
+                run.subscribers.remove(q)
+            except ValueError:
+                pass
 
     def _start(self, run: _JobRun) -> None:
         self._running_id = run.job.id
@@ -227,46 +235,49 @@ class JobManager:
             return
 
     async def _execute(self, run: _JobRun) -> None:
+        # Everything below runs inside a finally-guarded block so the queue can never
+        # wedge: whatever happens in the body, _advance() (which clears _running_id
+        # and starts the next queued job) always runs exactly once at the end.
         job = run.job
-        if job.status == JobStatus.cancelled:
-            run.close()
-            self._advance()
-            return
-        job.started_s = time.time()
         try:
-            run.proc = await asyncio.create_subprocess_exec(
-                *self._htdp,
-                *run.argv,
-                cwd=str(self._data_dir),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            assert run.proc.stdout is not None
-            async for raw in run.proc.stdout:
-                line = raw.decode(errors="replace").rstrip("\n")
-                run.emit(JobLogMessage(type="log", line=line))
-                m = _PROGRESS_RE.search(line)
-                if m:
-                    run.emit(
-                        JobLogMessage(
-                            type="progress", current=int(m.group(1)), total=int(m.group(2))
+            if job.status == JobStatus.cancelled:
+                run.close()
+                return
+            job.started_s = time.time()
+            try:
+                run.proc = await asyncio.create_subprocess_exec(
+                    *self._htdp,
+                    *run.argv,
+                    cwd=str(self._data_dir),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                )
+                assert run.proc.stdout is not None
+                async for raw in run.proc.stdout:
+                    line = raw.decode(errors="replace").rstrip("\n")
+                    run.emit(JobLogMessage(type="log", line=line))
+                    m = _PROGRESS_RE.search(line)
+                    if m:
+                        run.emit(
+                            JobLogMessage(
+                                type="progress", current=int(m.group(1)), total=int(m.group(2))
+                            )
                         )
-                    )
-            code = await run.proc.wait()
-        except Exception as exc:  # noqa: BLE001 - surface any spawn/stream error as a failed job
-            job.status = JobStatus.failed
-            job.error = str(exc)
+                code = await run.proc.wait()
+            except Exception as exc:  # noqa: BLE001 - surface any spawn/stream error as a failed job
+                job.status = JobStatus.failed
+                job.error = str(exc)
+                job.ended_s = time.time()
+                run.emit(JobLogMessage(type="status", status=job.status, exit_code=None))
+                run.close()
+                return
+            job.exit_code = code
             job.ended_s = time.time()
-            run.emit(JobLogMessage(type="status", status=job.status, exit_code=None))
+            if _status_of(job) != JobStatus.cancelled:
+                job.status = JobStatus.done if code == 0 else JobStatus.failed
+                if job.status == JobStatus.failed:
+                    job.error = f"exit code {code}"
+            run.emit(JobLogMessage(type="status", status=job.status, exit_code=code))
             run.close()
+        finally:
             self._advance()
-            return
-        job.exit_code = code
-        job.ended_s = time.time()
-        if _status_of(job) != JobStatus.cancelled:
-            job.status = JobStatus.done if code == 0 else JobStatus.failed
-            if job.status == JobStatus.failed:
-                job.error = f"exit code {code}"
-        run.emit(JobLogMessage(type="status", status=job.status, exit_code=code))
-        run.close()
-        self._advance()

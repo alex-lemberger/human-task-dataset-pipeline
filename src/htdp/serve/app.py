@@ -1,5 +1,8 @@
-"""FastAPI app factory for `htdp serve`: read-only status/jobs endpoints (Task 3).
-Read endpoints touch the filesystem only for counts; they never mutate `data/`."""
+"""FastAPI app factory for `htdp serve`: the HTTP/WS surface for the local pipeline.
+Read endpoints (health/status/jobs) touch the filesystem only for counts and never
+mutate `data/`. Job-control endpoints (POST /jobs, cancel, WS logs) spawn allowlisted
+`htdp` subcommands via `JobManager`, which do write to `data/` (synth/gen-demos/train/
+eval) or terminate a running subprocess (cancel)."""
 
 from __future__ import annotations
 
