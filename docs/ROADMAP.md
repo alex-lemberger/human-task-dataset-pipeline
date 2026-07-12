@@ -36,6 +36,8 @@ The first milestone proves the *factory* works before any hardware exists.
 - Multi-session queryable catalog — **done** (`htdp catalog` + `htdp catalog-query` with range filters landed; release-level inventory via `htdp catalog-releases` landed)
 - Agent-orchestration layer (Hermes / OpenClaw)
 - Remote / multi-user access
+- `htdp serve` — dashboard serving surface (read endpoints + single-concurrency job runner);
+  localhost-only, optional `serve` extra. Consumed by the Angular control-center dashboard.
 
 **Guiding principle for v0.2:** add one real modality at a time. Each modality adds an
 `ingest` adapter that normalizes to the existing raw representation — the downstream

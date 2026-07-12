@@ -99,6 +99,12 @@ manifest.json — no walk of the `data/` subdirectory. Rows are sorted by releas
 ## Design constraints (v0.1)
 
 - **No servers** — Postgres, MinIO, FastAPI, Docker are all deferred to v0.2.
+
+> **v0.2 exception — `htdp serve`.** A read-only + job-runner dashboard server
+> (optional extra `serve`, localhost-only, `uv sync --extra serve`) exposes filesystem
+> tier status and spawns allowlisted `htdp` subcommands for the control-center dashboard.
+> It creates no new data representation and is never part of the dataset product.
+
 - **No real hardware** — no VIVE, LSL, XDF, EEG, video capture.
 - **No ROS** — rosbag2 export deferred to v0.2.
 - **Deterministic** — seeded generator, canonical serialization (§ Reproducibility).

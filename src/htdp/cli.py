@@ -275,6 +275,7 @@ def gen_demos(
         )
     except (ImportError, ModuleNotFoundError) as exc:
         from htdp.learn.errors import LearnUnavailable
+
         typer.echo(f"error: {LearnUnavailable()}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(f"wrote demos to {out} (train={n_train} test={n_test})")
@@ -291,6 +292,7 @@ def train_policy(
         from htdp.learn.train import pick_device, train
     except ImportError as exc:
         from htdp.learn.errors import LearnUnavailable
+
         typer.echo(f"error: {LearnUnavailable()}", err=True)
         raise typer.Exit(1) from exc
 
@@ -304,7 +306,9 @@ def eval_policy(
     policy: Path = typer.Option(..., "--policy", help="checkpoint path"),
     out: Path | None = typer.Option(None, "--out", help="optional report JSON path"),
     n_positions: int | None = typer.Option(
-        None, "--n-positions", help="evaluate at N freshly sampled positions instead of test_positions.json"
+        None,
+        "--n-positions",
+        help="evaluate at N freshly sampled positions instead of test_positions.json",
     ),
     eval_seed: int = typer.Option(2000, "--eval-seed", help="seed for --n-positions sampling"),
 ) -> None:
@@ -313,6 +317,7 @@ def eval_policy(
         from htdp.learn.eval import eval_positions, evaluate
     except ImportError as exc:
         from htdp.learn.errors import LearnUnavailable
+
         typer.echo(f"error: {LearnUnavailable()}", err=True)
         raise typer.Exit(1) from exc
 
@@ -337,6 +342,7 @@ def train_visuomotor_cmd(
         from htdp.learn.train import pick_device, train_visuomotor
     except ImportError as exc:
         from htdp.learn.errors import LearnUnavailable
+
         typer.echo(f"error: {LearnUnavailable()}", err=True)
         raise typer.Exit(1) from exc
 
@@ -350,11 +356,14 @@ def eval_visuomotor_cmd(
     policy: Path = typer.Option(..., "--policy", help="visuomotor checkpoint path"),
     out: Path | None = typer.Option(None, "--out", help="optional report JSON path"),
     n_positions: int | None = typer.Option(
-        None, "--n-positions", help="evaluate at N freshly sampled positions instead of test_positions.json"
+        None,
+        "--n-positions",
+        help="evaluate at N freshly sampled positions instead of test_positions.json",
     ),
     eval_seed: int = typer.Option(2000, "--eval-seed", help="seed for --n-positions sampling"),
     domain_randomize: bool = typer.Option(
-        False, "--domain-randomize",
+        False,
+        "--domain-randomize",
         help="C1: eval under novel per-position scene randomization (light/table/camera/cube)",
     ),
     dr_seed_base: int = typer.Option(
@@ -366,13 +375,17 @@ def eval_visuomotor_cmd(
         from htdp.learn.eval import eval_positions, evaluate_visuomotor
     except ImportError as exc:
         from htdp.learn.errors import LearnUnavailable
+
         typer.echo(f"error: {LearnUnavailable()}", err=True)
         raise typer.Exit(1) from exc
 
     positions = eval_positions(demos, n_positions, eval_seed=eval_seed)
     report = evaluate_visuomotor(
-        policy, positions, out_path=out,
-        domain_randomize=domain_randomize, dr_seed_base=dr_seed_base,
+        policy,
+        positions,
+        out_path=out,
+        domain_randomize=domain_randomize,
+        dr_seed_base=dr_seed_base,
     )
     p, b = report["policy"], report["baseline"]
     typer.echo(
@@ -448,7 +461,9 @@ def catalog_query(
 
 @app.command(name="shapesort-eval-report")
 def shapesort_eval_report(
-    trials: Path = typer.Option(..., "--trials", help="JSONL file, one {outcome, used_fallback} object per line"),
+    trials: Path = typer.Option(
+        ..., "--trials", help="JSONL file, one {outcome, used_fallback} object per line"
+    ),
     out: Path = typer.Option(..., "--out", help="report JSON path"),
 ) -> None:
     """Aggregate R2 shape-sort trial logs into a success-rate + Wilson-CI report."""
@@ -456,6 +471,7 @@ def shapesort_eval_report(
         from htdp.shapesort.eval import TrialLog, aggregate
     except ImportError as exc:
         from htdp.shapesort.errors import ShapesortUnavailable
+
         typer.echo(f"error: {ShapesortUnavailable()}", err=True)
         raise typer.Exit(1) from exc
 
@@ -471,3 +487,21 @@ def shapesort_eval_report(
     report = aggregate(logs)
     out.write_text(json.dumps(report, indent=2))
     typer.echo(f"n={report['n']} success_rate={report['success_rate']:.3f} ci95={report['ci95']}")
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(8000, "--port"),
+    data_dir: Path = typer.Option(Path("."), "--data-dir"),
+) -> None:
+    """Run the read-only + job-runner dashboard server (optional extra: serve)."""
+    try:
+        import uvicorn
+
+        from htdp.serve.app import create_app
+    except ImportError as exc:
+        typer.echo("error: install the serve extra: uv sync --extra serve", err=True)
+        raise typer.Exit(1) from exc
+
+    uvicorn.run(create_app(data_dir.resolve()), host=host, port=port)
